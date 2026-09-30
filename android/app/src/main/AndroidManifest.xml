@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Lets the OS wake the app for push notifications later if you add
+         Firebase Cloud Messaging — harmless to leave declared even unused now. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.LocalOffers">
+
+        <!-- The actual "app": a Trusted Web Activity pointed at your deployed
+             site. Everything below just configures how it looks — the real
+             app logic and UI live entirely in the website. -->
+        <activity
+            android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:label="@string/app_name"
+            android:exported="true">
+
+            <meta-data
+                android:name="android.support.customtabs.trusted.DEFAULT_URL"
+                android:value="@string/launch_url" />
+
+            <!-- Status bar / toolbar color while the page loads, before the
+                 page's own <meta name="theme-color"> takes over. -->
+            <meta-data
+                android:name="android.support.customtabs.trusted.STATUS_BAR_COLOR"
+                android:resource="@color/colorPrimary" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.SPLASH_IMAGE_DRAWABLE"
+                android:resource="@drawable/splash_icon" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.SPLASH_SCREEN_BACKGROUND_COLOR"
+                android:resource="@color/colorSplashBackground" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.SPLASH_SCREEN_FADE_OUT_DURATION"
+                android:value="300" />
+
+            <!-- File this app is allowed to be "trusted" (URL-bar-free) for.
+                 Must match a domain that serves /.well-known/assetlinks.json
+                 proving this app and that site are the same operator — see
+                 android/README.md "Digital Asset Links" before you build. -->
+            <meta-data
+                android:name="asset_statements"
+                android:resource="@string/asset_statements" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Deep-links: tapping a localoffers.example.com link elsewhere
+                 on the phone opens this app instead of (or alongside) Chrome,
+                 once Digital Asset Links verification passes. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="@string/host_name" />
+            </intent-filter>
+        </activity>
+
+        <!-- Keeps the app-shell splash screen from flashing white before the
+             site's own dark/light theme is known. -->
+        <meta-data
+            android:name="android.support.customtabs.trusted.SPLASH_SCREEN_PROVIDER"
+            android:value="com.google.androidbrowserhelper.trusted.splashscreens.SplashScreenActivity" />
+
+        <activity
+            android:name="com.google.androidbrowserhelper.trusted.splashscreens.SplashScreenActivity"
+            android:exported="false">
+            <meta-data
+                android:name="android.support.customtabs.trusted.SPLASH_IMAGE_DRAWABLE"
+                android:resource="@drawable/splash_icon" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.SPLASH_SCREEN_BACKGROUND_COLOR"
+                android:resource="@color/colorSplashBackground" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.SPLASH_SCREEN_FADE_OUT_DURATION"
+                android:value="300" />
+        </activity>
+
+        <!-- Falls back to Chrome Custom Tabs if the site's Digital Asset
+             Links check fails (e.g. not yet deployed) — the app still works,
+             just shows a URL bar instead of feeling fully native. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/filepaths" />
+        </provider>
+    </application>
+</manifest>

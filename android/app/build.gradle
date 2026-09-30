@@ -1,0 +1,44 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace 'com.localoffers.app'
+    compileSdk 34
+
+    defaultConfig {
+        // CHANGE THIS before publishing — it's the app's permanent Play
+        // Store identity and can never be changed after your first upload.
+        // Convention: reverse-DNS of the domain you deploy the site to.
+        applicationId "com.localoffers.app"
+        minSdkVersion 21
+        targetSdkVersion 34
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    // Google's official TWA wrapper — this one library is the entire "app",
+    // it just launches your existing site in a chrome-less trusted browser
+    // tab. No React/web code is duplicated here; the APK stays tiny and
+    // every content/feature update ships by deploying the website, not by
+    // re-publishing the app (unless you change native-level things like the
+    // icon or app name).
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+
+    // Required by androidbrowserhelper (Custom Tabs) and by the AppCompat
+    // theme in res/values/styles.xml.
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.browser:browser:1.8.0'
+}

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LocalOffers</string>
+
+    <!-- ============================================================
+         CHANGE THESE THREE before building — they must point at your
+         actual deployed frontend, not this placeholder. See
+         android/README.md for the full pre-build checklist.
+         ============================================================ -->
+    <string name="launch_url">https://YOUR-DOMAIN.example.com/</string>
+    <string name="host_name">YOUR-DOMAIN.example.com</string>
+    <string name="asset_statements">
+        [{
+          \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+          \"target\": {
+            \"namespace\": \"web\",
+            \"site\": \"https://YOUR-DOMAIN.example.com\"
+          }
+        }]
+    </string>
+</resources>

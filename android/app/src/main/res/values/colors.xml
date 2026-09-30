@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the marigold/canvas brand color tokens in frontend/src/index.css
+         (keep these in sync if the web app's brand colors ever change). -->
+    <color name="colorPrimary">#E2570C</color>
+    <color name="colorPrimaryDark">#B8440A</color>
+    <color name="colorSplashBackground">#F7F5EF</color>
+</resources>
