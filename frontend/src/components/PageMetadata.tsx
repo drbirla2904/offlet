@@ -18,6 +18,17 @@ function setMeta(attribute: 'name' | 'property', key: string, content: string) {
   element.content = content
 }
 
+function setJsonLd(schema: Record<string, unknown>) {
+  let script = document.head.querySelector<HTMLScriptElement>('script[data-schema="app"]')
+  if (!script) {
+    script = document.createElement('script')
+    script.setAttribute('data-schema', 'app')
+    script.type = 'application/ld+json'
+    document.head.append(script)
+  }
+  script.textContent = JSON.stringify(schema)
+}
+
 export function applyPageMetadata({ title, description, pathname, noIndex = false }: Metadata) {
   const canonicalUrl = new URL(pathname, window.location.origin).toString()
   const previewImage = new URL('/icons/icon-512.png', window.location.origin).toString()
@@ -31,10 +42,22 @@ export function applyPageMetadata({ title, description, pathname, noIndex = fals
   setMeta('property', 'og:description', description)
   setMeta('property', 'og:url', canonicalUrl)
   setMeta('property', 'og:image', previewImage)
+  setMeta('property', 'og:locale', 'en_IN')
   setMeta('name', 'twitter:card', 'summary_large_image')
   setMeta('name', 'twitter:title', title)
   setMeta('name', 'twitter:description', description)
   setMeta('name', 'twitter:image', previewImage)
+  setMeta('name', 'twitter:site', '@offlet')
+
+  setJsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'OFFlet',
+    url: canonicalUrl,
+    logo: previewImage,
+    description,
+    sameAs: ['https://example.com'],
+  })
 
   let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
   if (!canonical) {

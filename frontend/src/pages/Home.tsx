@@ -26,7 +26,9 @@ export function Home() {
   }, [])
 
   useEffect(() => {
-    const geo = latitude && longitude ? { lat: latitude, lng: longitude, radius_km: 15 } : {}
+    const geo = latitude != null && longitude != null
+      ? { lat: latitude, lng: longitude, radius_km: 15 }
+      : city ? { city } : {}
     setLoading(true)
     Promise.all([
       offersApi.list({ ...geo, promoted: true, ordering: '-created_at' }),
@@ -71,7 +73,7 @@ export function Home() {
         </>
       ) : (
         <>
-          <OfferRail title="Offers Near You" offers={nearby} />
+          <OfferRail title="Offers Near You" offers={nearby} viewAllHref="/search?ordering=distance&radius_km=15" />
           <OfferRail title="Flash Deals" offers={flash} />
           <OfferRail title="Clearance Sale" offers={clearance} />
           <OfferRail title="Under ₹499" offers={under499} />

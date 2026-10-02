@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowUpRight, BarChart3, Bell, CheckCircle2, ChevronRight, CircleHelp, Eye, MessageCircle, Phone, Plus, Printer, Settings, Share2, Store, Users, Wallet } from 'lucide-react'
+import { ArrowUpRight, BarChart3, Bell, CheckCircle2, ChevronRight, CircleHelp, Eye, MessageCircle, Package, Phone, Plus, Printer, Settings, Share2, Store, Users, Wallet } from 'lucide-react'
 import { analyticsApi, businessesApi } from '../../api/endpoints'
 import type { Business, DashboardStats } from '../../types'
 
@@ -77,6 +77,9 @@ export function ShopkeeperDashboardPage() {
           </Link>
           <Link to="/dashboard/poster" className="flex h-10 items-center gap-2 border border-border bg-surface px-3 text-sm font-semibold text-ink transition hover:border-teal">
             <Printer size={16} /> Print poster
+          </Link>
+          <Link to="/dashboard/catalog" className="flex h-10 items-center gap-2 border border-border bg-surface px-3 text-sm font-semibold text-ink transition hover:border-teal">
+            <Package size={16} /> Catalog
           </Link>
           <Link to="/dashboard/offers/new" className="flex h-10 items-center gap-2 bg-marigold px-4 text-sm font-semibold text-white transition hover:bg-marigold-dark">
             <Plus size={16} /> New offer
@@ -166,7 +169,7 @@ export function ShopkeeperDashboardPage() {
             </section>
             <section className="bg-ink text-white rounded-3xl p-5">
               <p className="text-xs uppercase tracking-[0.14em] text-white/60 font-bold">Growth checklist</p><h2 className="font-display text-xl font-semibold mt-1">Keep your storefront sharp</h2>
-              <div className="flex flex-col gap-3 mt-5 text-sm"><Link to="/dashboard/offers/new" className="flex items-center justify-between border-b border-white/15 pb-3 hover:text-teal-soft">Publish a fresh offer <ChevronRight size={16} /></Link><Link to="/dashboard/settings" className="flex items-center justify-between border-b border-white/15 pb-3 hover:text-teal-soft">Complete business profile <ChevronRight size={16} /></Link><Link to="/account/messages" className="flex items-center justify-between hover:text-teal-soft">Reply to customers <ChevronRight size={16} /></Link></div>
+              <div className="flex flex-col gap-3 mt-5 text-sm"><Link to="/dashboard/offers/new" className="flex items-center justify-between border-b border-white/15 pb-3 hover:text-teal-soft">Publish a fresh offer <ChevronRight size={16} /></Link><Link to="/dashboard/catalog" className="flex items-center justify-between border-b border-white/15 pb-3 hover:text-teal-soft">Update your catalog <ChevronRight size={16} /></Link><Link to="/dashboard/settings" className="flex items-center justify-between border-b border-white/15 pb-3 hover:text-teal-soft">Complete business profile <ChevronRight size={16} /></Link><Link to="/account/messages" className="flex items-center justify-between hover:text-teal-soft">Reply to customers <ChevronRight size={16} /></Link></div>
             </section>
           </div>
 

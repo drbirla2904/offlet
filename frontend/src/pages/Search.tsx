@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { categoriesApi, offersApi } from '../api/endpoints'
 import type { OfferListParams } from '../api/endpoints'
@@ -17,7 +17,8 @@ const ORDERINGS = [
   { value: '-popular', label: 'Most Popular' },
 ]
 
-function buildSearchParams(params: URLSearchParams, latitude: number | null, longitude: number | null): OfferListParams {
+function buildSearchParams(params: URLSearchParams, latitude: number | null, longitude: number | null, city: string): OfferListParams {
+  const hasCoordinates = latitude != null && longitude != null
   return {
     search: params.get('q')?.trim() || undefined,
     tag: params.get('tag') || undefined,
@@ -27,8 +28,10 @@ function buildSearchParams(params: URLSearchParams, latitude: number | null, lon
     verified_only: params.get('verified_only') === 'true' || undefined,
     expiring_soon: params.get('expiring_soon') === 'true' || undefined,
     ordering: params.get('ordering') || '-created_at',
-    lat: latitude ?? undefined,
-    lng: longitude ?? undefined,
+    radius_km: hasCoordinates && params.get('radius_km') ? Number(params.get('radius_km')) : undefined,
+    lat: hasCoordinates ? latitude : undefined,
+    lng: hasCoordinates ? longitude : undefined,
+    city: hasCoordinates ? undefined : city || undefined,
   }
 }
 
@@ -51,7 +54,7 @@ function SearchBox({ initialQuery, onSearch }: { initialQuery: string; onSearch:
 
 export function SearchPage() {
   const [params, setParams] = useSearchParams()
-  const { latitude, longitude } = useLocationContext()
+  const { latitude, longitude, city } = useLocationContext()
   const [categories, setCategories] = useState<Category[]>([])
   const [offers, setOffers] = useState<Offer[]>([])
   const [loadedSearchKey, setLoadedSearchKey] = useState('')
@@ -59,7 +62,9 @@ export function SearchPage() {
   const [nextPage, setNextPage] = useState<number | null>(null)
   const [totalCount, setTotalCount] = useState(0)
   const [error, setError] = useState('')
-  const searchKey = `${params.toString()}|${latitude ?? ''}|${longitude ?? ''}`
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const loadMoreRef = useRef<() => Promise<void>>(async () => {})
+  const searchKey = `${params.toString()}|${latitude ?? ''}|${longitude ?? ''}|${city}`
   const loading = loadedSearchKey !== searchKey
 
   useEffect(() => {
@@ -69,7 +74,7 @@ export function SearchPage() {
   useEffect(() => {
     let active = true
     offersApi
-      .list({ ...buildSearchParams(params, latitude, longitude), page: 1 })
+      .list({ ...buildSearchParams(params, latitude, longitude, city), page: 1 })
       .then((response) => {
         if (!active) return
         setError('')
@@ -88,7 +93,7 @@ export function SearchPage() {
       })
 
     return () => { active = false }
-  }, [params, latitude, longitude, searchKey])
+  }, [params, latitude, longitude, city, searchKey])
 
   const update = (key: string, value: string | null) => {
     const next = new URLSearchParams(params)
@@ -104,7 +109,7 @@ export function SearchPage() {
     setError('')
     try {
       const response = await offersApi.list({
-        ...buildSearchParams(params, latitude, longitude),
+        ...buildSearchParams(params, latitude, longitude, city),
         page: nextPage,
       })
       setOffers((current) => [...current, ...response.results])
@@ -116,6 +121,20 @@ export function SearchPage() {
     }
   }
 
+  useEffect(() => {
+    loadMoreRef.current = loadMore
+  }, [loadMore])
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel || loading || loadingMore || nextPage === null) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) void loadMoreRef.current()
+    }, { rootMargin: '320px' })
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [loading, loadingMore, nextPage, offers.length])
+
   return (
     <div className="pb-24 sm:pb-8 max-w-5xl mx-auto px-4 pt-4">
       <SearchBox
@@ -125,6 +144,17 @@ export function SearchPage() {
       />
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+        {latitude != null && longitude != null && <select
+          aria-label="Filter by distance"
+          value={params.get('radius_km') || ''}
+          onChange={(event) => update('radius_km', event.target.value || null)}
+          className="shrink-0 bg-canvas border border-border rounded-full px-3 py-1.5 text-xs"
+        >
+          <option value="">Any distance</option>
+          <option value="5">Within 5 km</option>
+          <option value="15">Within 15 km</option>
+          <option value="30">Within 30 km</option>
+        </select>}
         <select
           aria-label="Filter by tag"
           value={params.get('tag') || ''}
@@ -188,6 +218,7 @@ export function SearchPage() {
             {!offers.length && !error && <p className="w-full py-10 text-center text-sm text-ink-soft">No offers match these filters yet.</p>}
           </div>
           {error && <p role="alert" className="mt-4 text-center text-sm text-red-600">{error}</p>}
+          <div ref={sentinelRef} className="h-1" aria-hidden="true" />
           {nextPage !== null && (
             <button
               type="button"

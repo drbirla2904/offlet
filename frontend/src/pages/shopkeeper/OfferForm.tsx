@@ -113,6 +113,8 @@ export function ShopkeeperOfferFormPage() {
           name: form.productName,
           brand: form.brand,
           description: form.description,
+          pricing_mode: 'static',
+          price: form.original_price ? Number(form.original_price) : undefined,
         } as any)
         if (imageFile) await productsApi.uploadImage(product.id, imageFile, true)
         offer = await offersApi.create({

@@ -119,12 +119,13 @@ export function OfferCard({ offer, onFavoriteChange }: { offer: Offer; onFavorit
   )
 }
 
-export function OfferRail({ title, offers }: { title: string; offers: Offer[] }) {
+export function OfferRail({ title, offers, viewAllHref }: { title: string; offers: Offer[]; viewAllHref?: string }) {
   if (!offers.length) return null
   return (
     <section className="mt-6">
       <div className="flex items-center justify-between px-4 mb-2">
         <h2 className="font-display text-lg font-semibold text-ink">{title}</h2>
+        {viewAllHref && <Link to={viewAllHref} className="text-xs font-semibold text-teal hover:underline">View all</Link>}
       </div>
       <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-1">
         {offers.map((o) => (

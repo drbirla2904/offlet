@@ -71,10 +71,13 @@ export const businessesApi = {
 }
 
 export const productsApi = {
-  list: (businessId: number) =>
-    apiClient.get<Paginated<Product>>('/products/', { params: { business: businessId } }).then((r) => r.data),
+  list: (businessId: number, page = 1) =>
+    apiClient.get<Paginated<Product>>('/products/', { params: { business: businessId, page } }).then((r) => r.data),
   create: (payload: Partial<Product> & { business: number }) =>
     apiClient.post<Product>('/products/', payload).then((r) => r.data),
+  update: (id: number, payload: Partial<Product>) =>
+    apiClient.patch<Product>(`/products/${id}/`, payload).then((r) => r.data),
+  remove: (id: number) => apiClient.delete(`/products/${id}/`),
   uploadImage: async (productId: number, file: File, isPrimary = false) => {
     const fd = new FormData()
     fd.append('product', String(productId))

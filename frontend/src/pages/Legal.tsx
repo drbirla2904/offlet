@@ -18,6 +18,33 @@ const policies: Record<string, { title: string; intro: string; sections: LegalSe
       { title: 'Availability and liability', paragraphs: ['We work to keep the service useful and available, but do not promise uninterrupted access, error-free listings, or a particular business result. To the extent permitted by law, OFFlet is not responsible for disputes or losses arising from a transaction between a customer and a shop, or from inaccurate shop-supplied information.', 'Nothing in these terms limits rights or remedies that cannot legally be excluded.'] },
     ],
   },
+  '/about': {
+    title: 'About OFFlet',
+    intro: 'OFFlet is a local discovery platform that helps people quickly find nearby businesses, current offers, and trustworthy information about what is open near them.',
+    sections: [
+      { title: 'What OFFlet does', paragraphs: ['OFFlet is designed to help nearby shoppers discover local offers, compare shops, and connect directly with businesses. We focus on discoverability, fast access to pricing, and simple account flows that do not require a login to browse public listings.', 'The platform is intended for local-market discovery, not for direct purchase processing, legal advice, or guaranteeing business outcomes.'] },
+      { title: 'How the platform works', bullets: ['Browse public offers and business profiles without needing an account.', 'Save local offers, follow shops, or review a business after sign-in.', 'Use the maps and contact actions to contact the shop directly for final pricing, availability, and visit details.'] },
+      { title: 'Operating model', paragraphs: ['The service is intended to help small businesses reach nearby customers and to help customers find relevant local deals. OFFlet can be used as a discovery layer while the actual sale, fulfillment, refund, warranty, and customer-support relationship remains between the customer and the shop.'] },
+    ],
+  },
+  '/contact': {
+    title: 'Contact OFFlet',
+    intro: 'Reach the OFFlet team for support, account help, business inquiries, or product feedback. These are example contact details for a production deployment and should be replaced with your actual support contact details.',
+    sections: [
+      { title: 'Support channels', paragraphs: ['For account and login support, contact the operator at support@offlet.example.', 'For business onboarding and listing updates, contact partners@offlet.example.', 'For general questions or service feedback, use hello@offlet.example or the contact form available in your production environment.'] },
+      { title: 'Operating hours', paragraphs: ['Support requests are usually handled during business hours in the service operator’s region. Response times vary depending on the issue and volume.'] },
+    ],
+  },
+  '/cookies': {
+    title: 'Cookie Policy',
+    intro: 'This page explains the storage OFFlet uses in the browser for essential functionality, convenience, and compliance. The exact cookie list may differ depending on your production configuration.',
+    sections: [
+      { title: 'What is stored', paragraphs: ['OFFlet may store a small guest identifier, location preference, saved search or recent-view data, and authentication tokens in local browser storage to keep the experience fast and personalized.', 'The service may also rely on standard browser storage used for security, session continuity, login refresh, and cookie consent preferences.'] },
+      { title: 'Why it is used', bullets: ['Keep you signed in across refreshes and maintain a session.', 'Remember your selected city or recent local-search preferences.', 'Remember whether you accepted or dismissed cookie notice choices.', 'Improve security and reduce repeated sign-in or duplicate actions.'] },
+      { title: 'Optional or third-party cookies', paragraphs: ['If your production deployment adds analytics or external embedded content, those tools should present a clear consent mechanism and document their own cookie usage separately. OFFlet itself does not assume any third-party advertising or tracking cookies without a deliberate configuration.'] },
+      { title: 'Managing cookies', paragraphs: ['You can clear browser storage or revoke consent in your browser settings. If you remove stored preferences or tokens, the platform may ask you to sign in again or reset some convenience settings.'] },
+    ],
+  },
   '/privacy': {
     title: 'Privacy Policy',
     intro: 'This notice explains what information OFFlet uses to provide local discovery, accounts, shop listings, and platform safety.',
@@ -45,20 +72,20 @@ const policies: Record<string, { title: string; intro: string; sections: LegalSe
   },
 }
 
-export function LegalPage() {
-  const { pathname } = useLocation()
-  const policy = policies[pathname] || policies['/terms']
-
+function LegalDocumentLayout({ title, intro, sections, showVersion = true }: { title: string; intro: string; sections: LegalSection[]; showVersion?: boolean }) {
   return (
     <div className="mx-auto max-w-6xl px-4 pb-24 pt-7 sm:pt-10">
       <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold text-teal"><ArrowLeft size={16} /> Back to OFFlet</Link>
       <header className="mt-6 border-b border-border pb-6">
-        <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-teal"><ShieldCheck size={15} /> OFFlet policies · version {policyVersion}</p>
-        <h1 className="mt-2 max-w-3xl font-display text-3xl font-semibold text-ink sm:text-4xl">{policy.title}</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-soft">{policy.intro}</p>
+        {showVersion && (
+          <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-teal"><ShieldCheck size={15} /> OFFlet policies · version {policyVersion}</p>
+        )}
+        <h1 className="mt-2 max-w-3xl font-display text-3xl font-semibold text-ink sm:text-4xl">{title}</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-soft">{intro}</p>
         <nav aria-label="Legal documents" className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold">
           <Link to="/terms" className="text-teal hover:underline">Terms of Service</Link>
           <Link to="/privacy" className="text-teal hover:underline">Privacy Policy</Link>
+          <Link to="/cookies" className="text-teal hover:underline">Cookie Policy</Link>
           <Link to="/shopkeeper-terms" className="text-teal hover:underline">Shopkeeper & Offer Rules</Link>
         </nav>
       </header>
@@ -66,11 +93,11 @@ export function LegalPage() {
         <nav aria-label="On this page" className="h-fit border-b border-border pb-4 lg:sticky lg:top-24 lg:border-b-0 lg:border-l lg:pl-4">
           <p className="mb-2 text-xs font-bold uppercase tracking-wide text-ink-soft">On this page</p>
           <div className="flex gap-2 overflow-x-auto lg:flex-col">
-            {policy.sections.map((section, index) => <a key={section.title} href={`#section-${index + 1}`} className="shrink-0 py-1 text-sm text-ink-soft hover:text-teal">{section.title}</a>)}
+            {sections.map((section, index) => <a key={section.title} href={`#section-${index + 1}`} className="shrink-0 py-1 text-sm text-ink-soft hover:text-teal">{section.title}</a>)}
           </div>
         </nav>
         <article className="max-w-3xl divide-y divide-border border-y border-border">
-          {policy.sections.map((section, index) => (
+          {sections.map((section, index) => (
             <section id={`section-${index + 1}`} key={section.title} className="scroll-mt-24 py-6">
               <h2 className="font-display text-xl font-semibold text-ink">{section.title}</h2>
               {section.paragraphs?.map((paragraph) => <p key={paragraph} className="mt-3 text-sm leading-7 text-ink-soft">{paragraph}</p>)}
@@ -83,4 +110,26 @@ export function LegalPage() {
       <Link to="/" className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-teal">Return to browsing <ArrowUpRight size={15} /></Link>
     </div>
   )
+}
+
+export function LegalPage() {
+  const { pathname } = useLocation()
+  const policy = policies[pathname] || policies['/terms']
+
+  return <LegalDocumentLayout title={policy.title} intro={policy.intro} sections={policy.sections} />
+}
+
+export function AboutPage() {
+  const policy = policies['/about']
+  return <LegalDocumentLayout title={policy.title} intro={policy.intro} sections={policy.sections} showVersion={false} />
+}
+
+export function ContactPage() {
+  const policy = policies['/contact']
+  return <LegalDocumentLayout title={policy.title} intro={policy.intro} sections={policy.sections} showVersion={false} />
+}
+
+export function CookiePolicyPage() {
+  const policy = policies['/cookies']
+  return <LegalDocumentLayout title={policy.title} intro={policy.intro} sections={policy.sections} />
 }

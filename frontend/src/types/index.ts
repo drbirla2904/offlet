@@ -54,6 +54,14 @@ export interface Product {
   description: string
   brand: string
   sku: string
+  pricing_mode: 'static' | 'dynamic'
+  currency?: string
+  price: string | number | null
+  price_min?: string | number | null
+  price_max?: string | number | null
+  price_note?: string
+  is_active?: boolean
+  display_price?: string
   video_url: string
   images: ProductImage[]
   created_at: string

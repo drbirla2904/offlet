@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
@@ -64,6 +65,13 @@ class ProductViewSet(viewsets.ModelViewSet):
         business_id = self.request.query_params.get("business")
         if business_id:
             qs = qs.filter(business_id=business_id)
+        user = self.request.user
+        if not user.is_authenticated:
+            qs = qs.filter(is_active=True)
+        elif user.is_staff:
+            pass
+        else:
+            qs = qs.filter(Q(is_active=True) | Q(business__owner_id=user.id))
         return qs
 
 
