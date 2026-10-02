@@ -1,4 +1,8 @@
 import django_filters
+from django.db.models import Q, TextField
+from django.db.models.functions import Cast
+
+from core.choices import OfferTag
 
 from .models import Offer
 
@@ -24,7 +28,21 @@ class OfferFilter(django_filters.FilterSet):
         fields = ["category", "business", "city", "offer_type"]
 
     def filter_tag(self, queryset, name, value):
-        return queryset.filter(tags__contains=[value])
+        value = value.strip().casefold()
+        normalized_label = value.replace("_", " ")
+        tag_values = [
+            tag
+            for tag, label in OfferTag.CHOICES
+            if value == tag.casefold() or normalized_label == label.casefold()
+        ]
+        if not tag_values:
+            return queryset.none()
+
+        queryset = queryset.alias(searchable_tags=Cast("tags", TextField()))
+        tag_filter = Q()
+        for tag in tag_values:
+            tag_filter |= Q(searchable_tags__icontains=f'"{tag}"')
+        return queryset.filter(tag_filter)
 
     def filter_promoted(self, queryset, name, value):
         """Any of Featured / Trending / Sponsored — used for the home page's

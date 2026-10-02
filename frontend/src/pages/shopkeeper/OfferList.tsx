@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { offersApi } from '../../api/endpoints'
 import type { Offer, OfferStatus } from '../../types'
 import { formatINR } from '../../utils/format'
 
 const TABS: { value: OfferStatus | 'all'; label: string }[] = [
+  { value: 'all', label: 'All' },
   { value: 'active', label: 'Active' },
   { value: 'scheduled', label: 'Scheduled' },
   { value: 'paused', label: 'Paused' },
@@ -14,7 +15,9 @@ const TABS: { value: OfferStatus | 'all'; label: string }[] = [
 ]
 
 export function ShopkeeperOfferListPage() {
-  const [tab, setTab] = useState<OfferStatus | 'all'>('active')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedTab = searchParams.get('status') as OfferStatus | 'all' | null
+  const [tab, setTab] = useState<OfferStatus | 'all'>(TABS.some((item) => item.value === requestedTab) ? requestedTab! : 'active')
   const [offers, setOffers] = useState<Offer[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -41,7 +44,10 @@ export function ShopkeeperOfferListPage() {
         {TABS.map((t) => (
           <button
             key={t.value}
-            onClick={() => setTab(t.value)}
+            onClick={() => {
+              setTab(t.value)
+              setSearchParams(t.value === 'active' ? {} : { status: t.value })
+            }}
             className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium border ${tab === t.value ? 'bg-marigold text-white border-marigold' : 'bg-canvas border-border text-ink-soft'}`}
           >
             {t.label}

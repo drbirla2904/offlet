@@ -30,7 +30,11 @@ class OfferListSerializer(serializers.ModelSerializer):
         ]
 
     def get_product_image(self, obj):
-        img = obj.product.images.filter(is_primary=True).first() or obj.product.images.first()
+        images = getattr(obj.product, "prefetched_images", None)
+        if images is None:
+            images = list(obj.product.images.all())
+            images.sort(key=lambda image: (not image.is_primary, image.order, image.id))
+        img = images[0] if images else None
         if not img:
             return None
         request = self.context.get("request")

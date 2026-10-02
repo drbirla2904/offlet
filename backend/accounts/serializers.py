@@ -29,14 +29,26 @@ class RequestOTPSerializer(serializers.Serializer):
 
 
 class VerifyOTPSerializer(serializers.Serializer):
-    """Verifies the code and, for a brand-new phone number, creates the
-    account in the same call — there's no separate "register" step. `role`
-    and `username` are only used the first time a phone number signs in;
-    for an existing account they're ignored (the account's role can't be
-    changed by re-verifying)."""
+    """Verifies a phone code without collecting profile details up front."""
 
     phone_number = serializers.CharField()
     otp = serializers.CharField()
-    role = serializers.ChoiceField(choices=[UserRole.CUSTOMER, UserRole.SHOPKEEPER], required=False)
-    username = serializers.CharField(required=False, allow_blank=True, max_length=150)
     guest_id = serializers.UUIDField(required=False, allow_null=True)
+
+
+class CompleteRegistrationSerializer(serializers.Serializer):
+    registration_token = serializers.CharField()
+    username = serializers.CharField(max_length=150)
+    role = serializers.ChoiceField(choices=[UserRole.CUSTOMER, UserRole.SHOPKEEPER])
+    guest_id = serializers.UUIDField(required=False, allow_null=True)
+
+
+class AcceptShopkeeperLegalSerializer(serializers.Serializer):
+    accept_terms = serializers.BooleanField()
+    accept_privacy_policy = serializers.BooleanField()
+    accept_offer_policy = serializers.BooleanField()
+
+    def validate(self, attrs):
+        if not all(attrs.values()):
+            raise serializers.ValidationError("All shopkeeper policies must be accepted.")
+        return attrs

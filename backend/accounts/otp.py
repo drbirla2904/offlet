@@ -7,10 +7,12 @@ import re
 from datetime import timedelta
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.utils import timezone
+from django.utils.module_loading import import_string
 from rest_framework.exceptions import Throttled, ValidationError
 
-from .models import PhoneOTP
+from .models import PhoneOTP, User
 
 logger = logging.getLogger(__name__)
 
@@ -26,13 +28,18 @@ def normalize_phone_number(raw: str) -> str:
     return digits
 
 
-def send_sms(phone_number: str, message: str) -> None:
-    """The one function to replace with a real SMS gateway (MSG91, Twilio,
-    Exotel, AWS SNS — any of them, the interface here is deliberately just
-    "phone number + message"). Until then: log it, and (only when DEBUG) the
-    caller also returns the code directly in the API response so local dev
-    and testing work with no SMS account configured at all."""
+def console_sms_backend(phone_number: str, message: str) -> None:
+    if not settings.DEBUG:
+        raise ImproperlyConfigured("The console SMS backend cannot be used outside DEBUG mode.")
     logger.info("SMS to %s: %s", phone_number, message)
+
+
+def send_sms(phone_number: str, message: str) -> None:
+    """Dispatch through the configured SMS provider adapter."""
+    backend_path = getattr(settings, "SMS_BACKEND", "")
+    if not backend_path:
+        raise ImproperlyConfigured("SMS_BACKEND must point to a configured SMS provider adapter.")
+    import_string(backend_path)(phone_number, message)
 
 
 def request_otp(phone_number: str) -> PhoneOTP:
@@ -48,7 +55,13 @@ def request_otp(phone_number: str) -> PhoneOTP:
         raise Throttled(detail=f"Please wait {wait}s before requesting another code.")
 
     otp = PhoneOTP.generate(phone_number)
-    send_sms(phone_number, _otp_message(otp.code))
+    disabled_account = User.objects.filter(phone_number=phone_number, is_active=False).exists()
+    if not disabled_account:
+        try:
+            send_sms(phone_number, _otp_message(otp.code))
+        except Exception:
+            otp.delete()
+            raise
     return otp
 
 

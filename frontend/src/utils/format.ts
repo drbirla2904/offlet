@@ -12,6 +12,7 @@ export function formatDistance(km: number | null | undefined) {
 }
 
 export const TAG_LABELS: Record<string, string> = {
+  demo: 'Demo',
   hot_deal: 'Hot Deal',
   flash_sale: 'Flash Sale',
   limited_stock: 'Limited Stock',

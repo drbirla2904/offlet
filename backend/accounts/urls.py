@@ -6,6 +6,8 @@ from . import views
 urlpatterns = [
     path("otp/request/", views.RequestOTPView.as_view(), name="otp-request"),
     path("otp/verify/", views.VerifyOTPView.as_view(), name="otp-verify"),
+    path("signup/complete/", views.CompleteRegistrationView.as_view(), name="signup-complete"),
+    path("shopkeeper-legal/", views.ShopkeeperLegalStatusView.as_view(), name="shopkeeper-legal"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("me/", views.MeView.as_view(), name="me"),
     path("guest-session/<uuid:guest_id>/", views.GuestSessionView.as_view(), name="guest-session"),

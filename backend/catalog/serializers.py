@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from core.uploads import validate_image_upload
+
 from .models import Category, Product, ProductImage
 
 
@@ -13,6 +15,9 @@ class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
         fields = ["id", "product", "image", "is_primary", "order"]
+
+    def validate_image(self, image):
+        return validate_image_upload(image)
 
     def validate_product(self, product):
         request = self.context.get("request")

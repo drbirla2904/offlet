@@ -82,6 +82,7 @@ class OfferStatus:
 
 
 class OfferTag:
+    DEMO = "demo"
     HOT_DEAL = "hot_deal"
     FLASH_SALE = "flash_sale"
     LIMITED_STOCK = "limited_stock"
@@ -95,6 +96,7 @@ class OfferTag:
     EXCLUSIVE = "exclusive"
     VERIFIED_SHOP = "verified_shop"
     CHOICES = [
+        (DEMO, "Demo"),
         (HOT_DEAL, "Hot Deal"),
         (FLASH_SALE, "Flash Sale"),
         (LIMITED_STOCK, "Limited Stock"),

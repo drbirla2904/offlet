@@ -1,5 +1,8 @@
 from rest_framework import permissions
 
+from .choices import UserRole
+from .legal import OFFER_POLICY_VERSION, PRIVACY_POLICY_VERSION, SHOPKEEPER_TERMS_VERSION
+
 
 class IsShopkeeper(permissions.BasePermission):
     message = "Only shopkeeper accounts can perform this action."
@@ -24,6 +27,28 @@ class IsBusinessOwner(permissions.BasePermission):
             getattr(obj, "business", None), "owner_id", None
         )
         return request.user.is_staff or owner_id == request.user.id
+
+
+class HasCurrentShopkeeperLegalAcceptance(permissions.BasePermission):
+    message = "Accept the current shopkeeper terms, privacy policy, and offer rules before managing listings."
+
+    def has_permission(self, request, view):
+        user = request.user
+        if request.method in permissions.SAFE_METHODS or not user.is_authenticated:
+            return True
+        if user.is_staff or user.role != UserRole.SHOPKEEPER:
+            return True
+        if getattr(view, "action", None) == "turn_off":
+            return True
+
+        from accounts.models import ShopkeeperLegalAcceptance
+
+        return ShopkeeperLegalAcceptance.objects.filter(
+            user=user,
+            terms_version=SHOPKEEPER_TERMS_VERSION,
+            privacy_policy_version=PRIVACY_POLICY_VERSION,
+            offer_policy_version=OFFER_POLICY_VERSION,
+        ).exists()
 
 
 class IsOwnerOrReadOnly(permissions.BasePermission):

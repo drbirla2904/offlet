@@ -1,9 +1,14 @@
+from django.conf import settings
+from django.db.models import F, Q
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_headers
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from core.geo import bounding_box, haversine_km
-from core.permissions import IsBusinessOwner
+from core.geo import bounding_box, distance_expression, parse_geo_params
+from core.permissions import HasCurrentShopkeeperLegalAcceptance, IsBusinessOwner
 
 from .models import Business, BusinessVerification
 from .serializers import (
@@ -20,7 +25,7 @@ class BusinessViewSet(viewsets.ModelViewSet):
     and ?city=&category=&search=.
     """
 
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsBusinessOwner]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsBusinessOwner, HasCurrentShopkeeperLegalAcceptance]
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -45,31 +50,31 @@ class BusinessViewSet(viewsets.ModelViewSet):
         if params.get("verified_only") == "true":
             qs = qs.filter(verification_status="verified")
 
-        lat, lng = params.get("lat"), params.get("lng")
-        if lat and lng:
-            lat, lng = float(lat), float(lng)
-            radius = float(params.get("radius_km", 10))
-            lat_min, lat_max, lng_min, lng_max = bounding_box(lat, lng, radius)
-            qs = qs.filter(
-                latitude__gte=lat_min, latitude__lte=lat_max,
-                longitude__gte=lng_min, longitude__lte=lng_max,
-            )
         return qs
 
+    @method_decorator(cache_page(settings.PUBLIC_API_CACHE_SECONDS))
+    @method_decorator(vary_on_headers("Authorization", "Cookie"))
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        lat, lng = request.query_params.get("lat"), request.query_params.get("lng")
-        businesses = list(queryset)
-        if lat and lng:
-            lat, lng = float(lat), float(lng)
-            for b in businesses:
-                b.distance_km = haversine_km(lat, lng, b.latitude, b.longitude)
-            radius = float(request.query_params.get("radius_km", 10))
-            businesses = [b for b in businesses if b.distance_km is None or b.distance_km <= radius]
-            businesses.sort(key=lambda b: (b.distance_km is None, b.distance_km))
+        lat, lng, radius = parse_geo_params(request.query_params, default_radius=10)
+        if lat is not None:
+            if radius is not None:
+                lat_min, lat_max, lng_min, lng_max = bounding_box(lat, lng, radius)
+                queryset = queryset.filter(
+                    (
+                        Q(latitude__gte=lat_min, latitude__lte=lat_max,
+                          longitude__gte=lng_min, longitude__lte=lng_max)
+                    )
+                    | Q(latitude__isnull=True)
+                    | Q(longitude__isnull=True)
+                )
+            queryset = queryset.annotate(distance_km=distance_expression(lat, lng, "latitude", "longitude"))
+            if radius is not None:
+                queryset = queryset.filter(Q(distance_km__lte=radius) | Q(distance_km__isnull=True))
+            queryset = queryset.order_by(F("distance_km").asc(nulls_last=True), "-id")
 
-        page = self.paginate_queryset(businesses)
-        serializer = self.get_serializer(page or businesses, many=True)
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(page if page is not None else queryset, many=True)
         if page is not None:
             return self.get_paginated_response(serializer.data)
         return Response(serializer.data)
@@ -84,7 +89,11 @@ class BusinessViewSet(viewsets.ModelViewSet):
         serializer = BusinessDetailSerializer(qs, many=True, context={"request": request})
         return Response(serializer.data)
 
-    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
+    @action(
+        detail=True,
+        methods=["post"],
+        permission_classes=[permissions.IsAuthenticated, HasCurrentShopkeeperLegalAcceptance],
+    )
     def submit_verification(self, request, pk=None):
         business = self.get_object()
         if business.owner_id != request.user.id:

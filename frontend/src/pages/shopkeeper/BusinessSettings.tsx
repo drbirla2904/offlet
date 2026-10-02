@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { BadgeCheck, Building2, Clock3, ExternalLink, FileCheck2, ImagePlus, MapPin, Save } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { businessesApi, categoriesApi } from '../../api/endpoints'
 import { apiErrorMessage } from '../../utils/apiError'
 import type { Business, Category } from '../../types'
@@ -40,6 +42,8 @@ const emptyProfile: BusinessProfileForm = {
 
 export function BusinessSettingsPage() {
   const [business, setBusiness] = useState<Business | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [pageError, setPageError] = useState('')
   const [categories, setCategories] = useState<Category[]>([])
   const [profile, setProfile] = useState<BusinessProfileForm>(emptyProfile)
   const [savingProfile, setSavingProfile] = useState(false)
@@ -51,6 +55,7 @@ export function BusinessSettingsPage() {
   const [hours, setHours] = useState<Hours>({})
   const [savingHours, setSavingHours] = useState(false)
   const [hoursSaved, setHoursSaved] = useState(false)
+  const [hoursError, setHoursError] = useState('')
 
   const [document, setDocument] = useState<File | null>(null)
   const [note, setNote] = useState('')
@@ -77,11 +82,20 @@ export function BusinessSettingsPage() {
           whatsapp_number: b.whatsapp_number || '',
         })
       }
-    })
-    categoriesApi.topLevel().then(setCategories)
+    }).catch(() => setPageError('Your shop profile could not be loaded. Please try again.'))
+      .finally(() => setLoading(false))
+    categoriesApi.topLevel().then(setCategories).catch(() => {})
   }, [])
 
-  if (!business) return <p className="text-center text-ink-soft py-10 text-sm">Loading…</p>
+  if (loading) return <div className="mx-auto max-w-4xl px-4 py-14 text-center text-sm text-ink-soft">Loading shop settings…</div>
+  if (!business) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-14">
+        <p role="alert" className="border-l-2 border-red-500 pl-3 text-sm text-red-700">{pageError || 'No shop profile was found.'}</p>
+        <Link to="/dashboard/setup" className="mt-4 inline-block text-sm font-semibold text-teal">Set up a shop profile</Link>
+      </div>
+    )
+  }
 
   const setDayHours = (day: string, value: [string, string] | null) => {
     setHours((h) => ({ ...h, [day]: value }))
@@ -131,9 +145,12 @@ export function BusinessSettingsPage() {
 
   const saveHours = async () => {
     setSavingHours(true)
+    setHoursError('')
     try {
       await businessesApi.update(business.id, { opening_hours: hours })
       setHoursSaved(true)
+    } catch (err) {
+      setHoursError(apiErrorMessage(err, 'Could not save opening hours. Please try again.'))
     } finally {
       setSavingHours(false)
     }
@@ -161,13 +178,44 @@ export function BusinessSettingsPage() {
   }
 
   return (
-    <div className="max-w-xl mx-auto px-4 pt-6 pb-24">
-      <h1 className="font-display text-2xl font-semibold text-ink mb-1">Business Settings</h1>
-      <p className="text-sm text-ink-soft mb-6">{business.name}</p>
+    <div className="mx-auto max-w-6xl px-4 pb-24 pt-7 sm:pt-10">
+      <header className="mb-7 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-teal">Business workspace</p>
+          <h1 className="mt-1 font-display text-3xl font-semibold text-ink">Shop settings</h1>
+          <p className="mt-1 text-sm text-ink-soft">Manage the details customers see on your storefront.</p>
+        </div>
+        <Link to={`/shops/${business.id}`} className="inline-flex h-10 items-center gap-2 border border-border px-3 text-sm font-semibold text-ink transition hover:border-teal">
+          <ExternalLink size={16} /> View storefront
+        </Link>
+      </header>
 
-      <section className="mb-8 border-b border-border pb-8">
-        <h2 className="font-display text-lg font-semibold text-ink mb-1">Shop profile</h2>
-        <p className="text-sm text-ink-soft mb-4">These details appear on your public shop page.</p>
+      <div className="mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-border py-3 text-sm">
+        <span className="inline-flex items-center gap-2 font-semibold text-ink"><Building2 size={16} className="text-teal" />{business.name}</span>
+        <span className="inline-flex items-center gap-1.5 text-ink-soft"><MapPin size={15} />{[business.area, business.city].filter(Boolean).join(', ') || 'Location not set'}</span>
+        <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${business.is_verified ? 'text-success' : 'text-amber'}`}>
+          {business.is_verified ? <BadgeCheck size={15} /> : <FileCheck2 size={14} />}
+          {business.is_verified ? 'Verified' : `Verification ${business.verification_status}`}
+        </span>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-[13rem_minmax(0,1fr)]">
+        <aside>
+          <nav aria-label="Shop settings sections" className="no-scrollbar flex gap-2 overflow-x-auto border-b border-border pb-3 lg:sticky lg:top-24 lg:flex-col lg:gap-0 lg:overflow-visible lg:border-b-0 lg:border-l lg:pb-0">
+            <a href="#shop-profile" className="shrink-0 px-3 py-2 text-sm font-semibold text-teal lg:border-l-2 lg:border-teal lg:-ml-px">Shop profile</a>
+            <a href="#shop-branding" className="shrink-0 px-3 py-2 text-sm font-medium text-ink-soft transition hover:text-ink">Branding</a>
+            <a href="#opening-hours" className="shrink-0 px-3 py-2 text-sm font-medium text-ink-soft transition hover:text-ink">Opening hours</a>
+            <a href="#verification" className="shrink-0 px-3 py-2 text-sm font-medium text-ink-soft transition hover:text-ink">Verification</a>
+          </nav>
+        </aside>
+
+        <div className="min-w-0">
+      <section id="shop-profile" className="scroll-mt-24 border-b border-border pb-8">
+        <div className="mb-5">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-ink-soft">Public details</p>
+          <h2 className="mt-1 font-display text-xl font-semibold text-ink">Shop profile</h2>
+          <p className="mt-1 text-sm text-ink-soft">Keep your business information accurate and easy to find.</p>
+        </div>
         <form onSubmit={saveProfile} className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-xs font-medium text-ink-soft">
             Shop name
@@ -215,15 +263,22 @@ export function BusinessSettingsPage() {
             </label>
           </div>
           {profileError && <p role="alert" className="text-sm text-red-700">{profileError}</p>}
-          <div className="flex items-center gap-3">
-            <button disabled={savingProfile} className="bg-marigold text-white rounded-xl py-2.5 px-6 text-sm font-semibold disabled:opacity-60">
+          <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
+            <button disabled={savingProfile} className="inline-flex h-10 items-center gap-2 bg-marigold px-5 text-sm font-semibold text-white transition hover:bg-marigold-dark disabled:opacity-60">
+              <Save size={16} />
               {savingProfile ? 'Saving…' : 'Save profile'}
             </button>
-            {profileSaved && <span role="status" className="text-sm text-teal">Profile saved</span>}
+            {profileSaved && <span role="status" className="text-sm font-medium text-success">Profile saved</span>}
           </div>
         </form>
-        <form onSubmit={saveLogo} className="mt-6 border-t border-border pt-5 flex flex-col gap-3">
-          <h3 className="text-sm font-semibold text-ink">Shop logo</h3>
+      </section>
+
+      <section id="shop-branding" className="scroll-mt-24 border-b border-border py-8">
+        <div className="mb-4">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-ink-soft">Visual identity</p>
+          <h2 className="mt-1 font-display text-xl font-semibold text-ink">Branding</h2>
+        </div>
+        <form onSubmit={saveLogo} className="flex flex-col gap-3">
           <div className="flex items-center gap-3">
             {business.logo ? (
               <img src={resolveMediaUrl(business.logo)} alt={`${business.name} logo`} className="w-14 h-14 rounded-xl object-contain bg-canvas p-1 border border-border" />
@@ -233,19 +288,63 @@ export function BusinessSettingsPage() {
               </div>
             )}
             <label className="flex-1 text-xs text-ink-soft">
-              Choose a square shop image
+              <span className="mb-1 flex items-center gap-1.5 font-semibold text-ink"><ImagePlus size={15} /> Shop logo</span>
+              Use a clear square image. JPG, PNG, or WebP.
               <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { setLogoFile(e.target.files?.[0] || null); setLogoMessage('') }} className="mt-1 block w-full text-sm text-ink" />
             </label>
           </div>
           {logoMessage && <p role="status" className="text-sm text-ink-soft">{logoMessage}</p>}
-          <button disabled={savingLogo || !logoFile} className="self-start bg-canvas border border-border text-ink rounded-xl py-2 px-4 text-sm font-semibold disabled:opacity-60">
+          <button disabled={savingLogo || !logoFile} className="self-start border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink transition hover:border-teal disabled:opacity-60">
             {savingLogo ? 'Optimizing and uploading…' : 'Update logo'}
           </button>
         </form>
       </section>
 
-      <section className="mb-8">
-        <h2 className="font-display text-lg font-semibold text-ink mb-1">Verification</h2>
+      <section id="opening-hours" className="scroll-mt-24 border-b border-border py-8">
+        <div className="mb-4">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-ink-soft">Customer information</p>
+          <h2 className="mt-1 flex items-center gap-2 font-display text-xl font-semibold text-ink"><Clock3 size={19} className="text-teal" /> Opening hours</h2>
+          <p className="mt-1 text-sm text-ink-soft">Shown on your public shop profile.</p>
+        </div>
+        <div className="divide-y divide-border border-y border-border">
+          {DAYS.map(({ key, label }) => {
+            const value = hours[key]
+            const closed = value === null || value === undefined
+            return (
+              <div key={key} className="flex flex-wrap items-center gap-3 py-3">
+                <span className="w-24 shrink-0 text-sm font-medium text-ink">{label}</span>
+                <label className="flex shrink-0 items-center gap-2 text-xs text-ink-soft">
+                  <input type="checkbox" checked={!closed} onChange={(event) => setDayHours(key, event.target.checked ? ['10:00', '21:00'] : null)} />
+                  Open
+                </label>
+                {!closed && (
+                  <div className="flex w-full items-center gap-2 sm:w-auto">
+                    <label className="sr-only" htmlFor={`hours-${key}-open`}>{label} opening time</label>
+                    <input id={`hours-${key}-open`} type="time" value={value[0]} onChange={(event) => setDayHours(key, [event.target.value, value[1]])} className="min-w-0 flex-1 border border-border px-2 py-2 text-sm sm:flex-none" />
+                    <span className="shrink-0 text-xs text-ink-soft">to</span>
+                    <label className="sr-only" htmlFor={`hours-${key}-close`}>{label} closing time</label>
+                    <input id={`hours-${key}-close`} type="time" value={value[1]} onChange={(event) => setDayHours(key, [value[0], event.target.value])} className="min-w-0 flex-1 border border-border px-2 py-2 text-sm sm:flex-none" />
+                  </div>
+                )}
+                {closed && <span className="text-xs text-ink-soft">Closed</span>}
+              </div>
+            )
+          })}
+        </div>
+        {hoursError && <p role="alert" className="mt-3 text-sm text-red-700">{hoursError}</p>}
+        <div className="mt-4 flex items-center gap-3">
+          <button onClick={saveHours} disabled={savingHours} className="inline-flex h-10 items-center gap-2 bg-marigold px-5 text-sm font-semibold text-white transition hover:bg-marigold-dark disabled:opacity-60">
+            <Save size={16} />{savingHours ? 'Saving…' : 'Save hours'}
+          </button>
+          {hoursSaved && <span role="status" className="text-sm font-medium text-success">Hours saved</span>}
+        </div>
+      </section>
+
+      <section id="verification" className="scroll-mt-24 py-8">
+        <div className="mb-4">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-ink-soft">Trust & safety</p>
+          <h2 className="mt-1 font-display text-xl font-semibold text-ink">Business verification</h2>
+        </div>
         <p className="text-sm text-ink-soft mb-3">
           Current status:{' '}
           <span className={business.verification_status === 'verified' ? 'text-teal font-semibold' : 'font-semibold'}>
@@ -276,59 +375,8 @@ export function BusinessSettingsPage() {
           </form>
         )}
       </section>
-
-      <section>
-        <h2 className="font-display text-lg font-semibold text-ink mb-1">Opening Hours</h2>
-        <p className="text-sm text-ink-soft mb-3">Shown on your public shop profile.</p>
-        <div className="flex flex-col gap-2">
-          {DAYS.map(({ key, label }) => {
-            const value = hours[key]
-            const closed = value === null || value === undefined
-            return (
-              // flex-wrap + the time-input group as one unit (w-full on
-              // mobile) so the two <input type="time"> — which browsers
-              // won't shrink much below ~90px each — drop to their own full
-              // line on narrow screens instead of overflowing the row.
-              <div key={key} className="flex flex-wrap items-center gap-2 py-1.5 border-b border-border last:border-0">
-                <span className="w-24 text-sm text-ink shrink-0">{label}</span>
-                <label className="flex items-center gap-1.5 text-xs text-ink-soft shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={!closed}
-                    onChange={(e) => setDayHours(key, e.target.checked ? ['10:00', '21:00'] : null)}
-                  />
-                  Open
-                </label>
-                {!closed && (
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <input
-                      type="time"
-                      value={value[0]}
-                      onChange={(e) => setDayHours(key, [e.target.value, value[1]])}
-                      className="border border-border rounded-lg px-2 py-1 text-xs flex-1 min-w-0 sm:flex-none"
-                    />
-                    <span className="text-ink-soft text-xs shrink-0">to</span>
-                    <input
-                      type="time"
-                      value={value[1]}
-                      onChange={(e) => setDayHours(key, [value[0], e.target.value])}
-                      className="border border-border rounded-lg px-2 py-1 text-xs flex-1 min-w-0 sm:flex-none"
-                    />
-                  </div>
-                )}
-              </div>
-            )
-          })}
         </div>
-        <button
-          onClick={saveHours}
-          disabled={savingHours}
-          className="bg-marigold text-white rounded-xl py-2.5 px-6 text-sm font-semibold disabled:opacity-60 mt-4"
-        >
-          {savingHours ? 'Saving…' : 'Save Hours'}
-        </button>
-        {hoursSaved && <span className="text-sm text-teal ml-3">Saved ✓</span>}
-      </section>
+      </div>
     </div>
   )
 }

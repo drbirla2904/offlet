@@ -1,0 +1,80 @@
+limit_req_zone $binary_remote_addr zone=localoffers_api:10m rate=15r/s;
+limit_req_zone $binary_remote_addr zone=localoffers_admin:10m rate=10r/m;
+
+upstream localoffers_backend {
+    server 127.0.0.1:8000;
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    server_name example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name example.com;
+
+    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    server_tokens off;
+    client_max_body_size 12m;
+    add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
+
+    root /srv/localoffers/frontend/dist;
+    index index.html;
+
+    location /api/ {
+        limit_req zone=localoffers_api burst=40 nodelay;
+        limit_req_status 429;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 65s;
+        proxy_pass http://localoffers_backend;
+    }
+
+    location /admin/ {
+        limit_req zone=localoffers_admin burst=20 nodelay;
+        limit_req_status 429;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://localoffers_backend;
+    }
+
+    location /health/ {
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://localoffers_backend;
+    }
+
+    location /static/ {
+        alias /srv/localoffers/backend/staticfiles/;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
+        expires 1h;
+    }
+
+    location /media/ {
+        return 404;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+        add_header Strict-Transport-Security "max-age=31536000" always;
+        add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
+    }
+}

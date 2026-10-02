@@ -8,6 +8,7 @@ import { formatDistance } from '../utils/format'
 import { useToast } from '../context/ToastContext'
 import { apiErrorMessage } from '../utils/apiError'
 import { resolveMediaUrl } from '../utils/mediaUrl'
+import { getDirectionsUrl } from '../utils/directions'
 
 export function BusinessProfile() {
   const { id } = useParams()
@@ -95,7 +96,7 @@ export function BusinessProfile() {
             💬 WhatsApp
           </a>
           <a
-            href={`https://www.google.com/maps/search/?api=1&query=${business.latitude},${business.longitude}`}
+            href={getDirectionsUrl(business)}
             target="_blank" rel="noreferrer"
             className="bg-canvas border border-border rounded-xl py-2.5 text-center font-semibold text-ink col-span-2"
           >

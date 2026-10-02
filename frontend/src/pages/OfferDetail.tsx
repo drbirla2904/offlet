@@ -10,6 +10,7 @@ import { REPORT_REASONS } from '../utils/constants'
 import { useToast } from '../context/ToastContext'
 import { apiErrorMessage } from '../utils/apiError'
 import { resolveMediaUrl } from '../utils/mediaUrl'
+import { getDirectionsUrl } from '../utils/directions'
 
 export function OfferDetail() {
   const { id } = useParams()
@@ -45,7 +46,7 @@ export function OfferDetail() {
   }
   const directions = () => {
     offersApi.interact(offer.id, 'directions', guestId).catch(() => {})
-    window.open(`https://www.google.com/maps/search/?api=1&query=${business.latitude},${business.longitude}`, '_blank')
+    window.open(getDirectionsUrl(business), '_blank', 'noopener,noreferrer')
   }
   const save = requireAuth(async () => {
     try {

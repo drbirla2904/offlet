@@ -142,12 +142,37 @@ interface AuthResponse {
   created: boolean
 }
 
+interface OTPVerificationResponse {
+  requires_profile_setup: true
+  registration_token: string
+}
+
+export interface ShopkeeperLegalStatus {
+  accepted: boolean
+  terms_version: string
+  privacy_policy_version: string
+  offer_policy_version: string
+  accepted_at: string | null
+}
+
 export const authApi = {
   requestOtp: (phoneNumber: string) =>
     apiClient
       .post<{ status: string; expires_in: number; debug_otp?: string }>('/auth/otp/request/', { phone_number: phoneNumber })
       .then((r) => r.data),
-  verifyOtp: (payload: { phone_number: string; otp: string; role?: 'customer' | 'shopkeeper'; username?: string; guest_id?: string }) =>
-    apiClient.post<AuthResponse>('/auth/otp/verify/', payload).then((r) => r.data),
+  verifyOtp: (payload: { phone_number: string; otp: string; guest_id?: string }) =>
+    apiClient.post<AuthResponse | OTPVerificationResponse>('/auth/otp/verify/', payload).then((r) => r.data),
+  completeRegistration: (payload: {
+    registration_token: string
+    username: string
+    role: 'customer' | 'shopkeeper'
+    guest_id?: string
+  }) => apiClient.post<AuthResponse>('/auth/signup/complete/', payload).then((r) => r.data),
+  shopkeeperLegalStatus: () => apiClient.get<ShopkeeperLegalStatus>('/auth/shopkeeper-legal/').then((r) => r.data),
+  acceptShopkeeperLegal: () => apiClient.post<ShopkeeperLegalStatus>('/auth/shopkeeper-legal/', {
+    accept_terms: true,
+    accept_privacy_policy: true,
+    accept_offer_policy: true,
+  }).then((r) => r.data),
   me: () => apiClient.get<User>('/auth/me/').then((r) => r.data),
 }

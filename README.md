@@ -21,31 +21,47 @@ Three deployable projects:
 
 ## Fastest path to a running app locally
 
+Run these in two terminals from the repository root:
+
 ```bash
-# Terminal 1 — backend
+# Terminal 1 — backend API (http://localhost:8000)
 cd backend
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 python manage.py migrate
 python manage.py seed_categories
+python manage.py seed_demo_marketplace
 python manage.py createsuperuser
 python manage.py runserver
 
-# Terminal 2 — frontend
+# Terminal 2 — frontend app (http://localhost:5173)
 cd frontend
 npm install
 cp .env.example .env
 npm run dev
 ```
 
-Open `http://localhost:5173`. Sign in with any phone number — the backend has
+Open `http://localhost:5173` (the frontend, not port 8000). The page shell
+should render even when the API is unavailable; offers and account actions
+need the backend running. If the page is blank after an update, use the
+browser's site settings to clear this site's data and unregister its service
+worker, then reload so an old PWA cache cannot serve stale app files.
+
+Sign in with any phone number — the backend has
 no real SMS gateway wired up yet, so in local dev (`DEBUG=True`) the OTP is
 shown to you directly via a toast instead of being texted (see backend
 README's "Auth" section for plugging in a real provider). Pick "I'm a
 Shopkeeper" when verifying, create a business (`/dashboard/setup`), publish
 an offer, then open an incognito window to browse it as a guest — no login
 needed to see it, call the shop, or get directions.
+
+## Production deployment
+
+Use [deploy/DEPLOYMENT.md](deploy/DEPLOYMENT.md) for production settings,
+Gunicorn/Nginx setup, launch blockers, health checks, and staged k6 load
+testing. Real SMS delivery and shared object storage must be configured
+before a public launch; the local development OTP flow is not production-ready.
 
 ## What's implemented vs. the original spec
 

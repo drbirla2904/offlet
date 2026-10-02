@@ -1,4 +1,4 @@
-import random
+import secrets
 from datetime import timedelta
 
 from django.contrib.auth.base_user import BaseUserManager
@@ -101,7 +101,7 @@ class PhoneOTP(models.Model):
 
     @classmethod
     def generate(cls, phone_number):
-        code = "".join(random.choices("0123456789", k=cls.OTP_LENGTH))
+        code = f"{secrets.randbelow(10 ** cls.OTP_LENGTH):0{cls.OTP_LENGTH}d}"
         return cls.objects.create(
             phone_number=phone_number,
             code=code,
@@ -143,3 +143,23 @@ class GuestSession(models.Model):
     recently_viewed_offer_ids = models.JSONField(default=list, blank=True)
     search_history = models.JSONField(default=list, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class ShopkeeperLegalAcceptance(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="shopkeeper_legal_acceptances")
+    terms_version = models.CharField(max_length=32)
+    privacy_policy_version = models.CharField(max_length=32)
+    offer_policy_version = models.CharField(max_length=32)
+    accepted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-accepted_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "terms_version", "privacy_policy_version", "offer_policy_version"],
+                name="unique_shopkeeper_legal_acceptance",
+            )
+        ]
+
+    def __str__(self):
+        return f"Shopkeeper legal acceptance for user {self.user_id} ({self.accepted_at:%Y-%m-%d})"

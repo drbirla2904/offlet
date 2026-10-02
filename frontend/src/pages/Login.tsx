@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { PhoneOtpForm } from '../components/PhoneOtpForm'
 import type { User } from '../types'
 
@@ -21,6 +22,9 @@ export function LoginPage() {
       </p>
 
       <PhoneOtpForm onSuccess={handleSuccess} />
+      <p className="mt-5 text-xs leading-5 text-ink-soft">
+        By creating an account, you agree to our <Link to="/terms" className="font-semibold text-teal underline">Terms of Service</Link> and acknowledge the <Link to="/privacy" className="font-semibold text-teal underline">Privacy Policy</Link>.
+      </p>
     </div>
   )
 }

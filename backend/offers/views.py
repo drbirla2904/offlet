@@ -1,13 +1,21 @@
+from django.conf import settings
 from django.db import models
+from django.db.models import F, Q, Prefetch, TextField
+from django.db.models.functions import Cast
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
+from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_headers
 
 from analytics.models import OfferInteraction, OfferView
-from core.geo import bounding_box, haversine_km
-from core.permissions import IsBusinessOwner
+from catalog.models import ProductImage
+from core.choices import OfferTag
+from core.geo import bounding_box, distance_expression, parse_geo_params
+from core.permissions import HasCurrentShopkeeperLegalAcceptance, IsBusinessOwner
 
 from .filters import OfferFilter
 from .models import Offer
@@ -23,7 +31,7 @@ class OfferViewSet(viewsets.ModelViewSet):
     passing ?mine=true, which requires auth and is scoped to their businesses.
     """
 
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsBusinessOwner]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsBusinessOwner, HasCurrentShopkeeperLegalAcceptance]
     filterset_class = OfferFilter
     search_fields = ["title", "product__name", "product__brand", "business__name"]
 
@@ -41,7 +49,11 @@ class OfferViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         base = Offer.objects.select_related("business", "product", "product__category").prefetch_related(
-            "product__images"
+            Prefetch(
+                "product__images",
+                queryset=ProductImage.objects.order_by("-is_primary", "order", "id"),
+                to_attr="prefetched_images",
+            )
         )
         params = self.request.query_params
         user = self.request.user
@@ -66,55 +78,77 @@ class OfferViewSet(viewsets.ModelViewSet):
             else:
                 qs = base.visible_to_customers()
 
-        search = params.get("search")
+        search = params.get("search", "").strip()
         if search:
-            from django.db.models import Q
-
-            qs = qs.filter(
-                Q(title__icontains=search)
-                | Q(product__name__icontains=search)
-                | Q(product__brand__icontains=search)
-                | Q(business__name__icontains=search)
-            )
+            qs = qs.alias(searchable_tags=Cast("tags", TextField()))
+            for term in search.split():
+                term_filter = (
+                    Q(title__icontains=term)
+                    | Q(custom_description__icontains=term)
+                    | Q(product__name__icontains=term)
+                    | Q(product__brand__icontains=term)
+                    | Q(product__description__icontains=term)
+                    | Q(product__category__name__icontains=term)
+                    | Q(business__name__icontains=term)
+                )
+                normalized_term = term.casefold().replace("_", " ")
+                matching_tags = [
+                    value
+                    for value, label in OfferTag.CHOICES
+                    if term.casefold() in value.casefold()
+                    or normalized_term in label.casefold()
+                ]
+                for tag in matching_tags:
+                    term_filter |= Q(searchable_tags__icontains=f'"{tag}"')
+                qs = qs.filter(term_filter)
         return qs
 
     def filter_queryset(self, queryset):
         queryset = super().filter_queryset(queryset)
         return queryset
 
+    @method_decorator(cache_page(settings.PUBLIC_API_CACHE_SECONDS))
+    @method_decorator(vary_on_headers("Authorization", "Cookie"))
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        offers = list(queryset)
-
-        lat, lng = request.query_params.get("lat"), request.query_params.get("lng")
-        if lat and lng:
-            lat, lng = float(lat), float(lng)
-            for o in offers:
-                o.distance_km = haversine_km(lat, lng, o.business.latitude, o.business.longitude)
-            radius = request.query_params.get("radius_km")
-            if radius:
-                radius = float(radius)
-                offers = [o for o in offers if o.distance_km is None or o.distance_km <= radius]
-        else:
-            for o in offers:
-                o.distance_km = None
-
+        lat, lng, radius = parse_geo_params(request.query_params)
         ordering = request.query_params.get("ordering", "-created_at")
-        key_funcs = {
-            "distance": lambda o: (o.distance_km is None, o.distance_km or 0),
-            "-discount": lambda o: -o.discount_percentage,
-            "price": lambda o: (o.offer_price is None, o.offer_price or 0),
-            "-price": lambda o: -(o.offer_price or 0),
-            "-created_at": lambda o: o.created_at,
-            "expiring_soon": lambda o: (o.end_time is None, o.end_time),
-            "-popular": lambda o: -(o.view_count + o.favorite_count * 3),
-        }
-        if ordering in key_funcs:
-            reverse = ordering in ("-created_at",)
-            offers.sort(key=key_funcs[ordering], reverse=reverse)
+        if lat is not None:
+            if radius is not None:
+                lat_min, lat_max, lng_min, lng_max = bounding_box(lat, lng, radius)
+                queryset = queryset.filter(
+                    (
+                        Q(
+                            business__latitude__gte=lat_min,
+                            business__latitude__lte=lat_max,
+                            business__longitude__gte=lng_min,
+                            business__longitude__lte=lng_max,
+                        )
+                    )
+                    | Q(business__latitude__isnull=True)
+                    | Q(business__longitude__isnull=True)
+                )
+            queryset = queryset.annotate(
+                distance_km=distance_expression(lat, lng, "business__latitude", "business__longitude")
+            )
+            if radius is not None:
+                queryset = queryset.filter(Q(distance_km__lte=radius) | Q(distance_km__isnull=True))
 
-        page = self.paginate_queryset(offers)
-        serializer = self.get_serializer(page or offers, many=True)
+        order_fields = {
+            "-created_at": ("-created_at", "-id"),
+            "-discount": ("-discount_percentage", "-id"),
+            "price": (F("offer_price").asc(nulls_last=True), "id"),
+            "-price": (F("offer_price").desc(nulls_first=True), "-id"),
+            "expiring_soon": (F("end_time").asc(nulls_last=True), "-id"),
+            "-popular": ((F("view_count") + F("favorite_count") * 3).desc(), "-id"),
+        }
+        if ordering == "distance" and lat is not None:
+            queryset = queryset.order_by(F("distance_km").asc(nulls_last=True), "-id")
+        elif ordering in order_fields:
+            queryset = queryset.order_by(*order_fields[ordering])
+
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(page if page is not None else queryset, many=True)
         if page is not None:
             return self.get_paginated_response(serializer.data)
         return Response(serializer.data)
@@ -145,7 +179,11 @@ class OfferViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("You do not own this offer.")
         return offer
 
-    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
+    @action(
+        detail=True,
+        methods=["post"],
+        permission_classes=[permissions.IsAuthenticated, HasCurrentShopkeeperLegalAcceptance],
+    )
     def publish(self, request, pk=None):
         offer = self._owned_offer(request, pk)
         offer.publish()
@@ -157,13 +195,21 @@ class OfferViewSet(viewsets.ModelViewSet):
         offer.pause()
         return Response(OfferDetailSerializer(offer, context={"request": request}).data)
 
-    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
+    @action(
+        detail=True,
+        methods=["post"],
+        permission_classes=[permissions.IsAuthenticated, HasCurrentShopkeeperLegalAcceptance],
+    )
     def turn_on(self, request, pk=None):
         offer = self._owned_offer(request, pk)
         offer.resume()
         return Response(OfferDetailSerializer(offer, context={"request": request}).data)
 
-    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
+    @action(
+        detail=True,
+        methods=["post"],
+        permission_classes=[permissions.IsAuthenticated, HasCurrentShopkeeperLegalAcceptance],
+    )
     def duplicate(self, request, pk=None):
         offer = self._owned_offer(request, pk)
         clone = offer.duplicate()
@@ -178,7 +224,7 @@ class OfferViewSet(viewsets.ModelViewSet):
             user=request.user if request.user.is_authenticated else None,
             guest_id=request.data.get("guest_id") or None,
         )
-        Offer.objects.filter(pk=offer.pk).update(view_count=offer.view_count + 1)
+        Offer.objects.filter(pk=offer.pk).update(view_count=F("view_count") + 1)
         return Response({"status": "logged"})
 
     @action(detail=True, methods=["post"], permission_classes=[permissions.AllowAny])

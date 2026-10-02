@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from core.uploads import validate_image_upload
+
 from .models import FavoriteOffer, FollowBusiness, OfferReport, Review
 
 
@@ -49,6 +51,9 @@ class ReviewSerializer(serializers.ModelSerializer):
         if not 1 <= value <= 5:
             raise serializers.ValidationError("Rating must be between 1 and 5.")
         return value
+
+    def validate_image(self, image):
+        return validate_image_upload(image)
 
 
 class OfferReportSerializer(serializers.ModelSerializer):

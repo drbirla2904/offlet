@@ -20,12 +20,23 @@ cp .env.example .env            # DATABASE_URL is commented out by default — l
                                  # that way for local dev; it falls back to SQLite
 python manage.py migrate
 python manage.py seed_categories
+python manage.py seed_demo_marketplace  # optional: 100 demo shops + 2-3 active offers each
 python manage.py createsuperuser
 python manage.py runserver
 ```
 
+The demo command creates clearly labeled fictional listings across all seeded
+categories, with placeholder contact details and a visible `Demo` offer tag.
+It is idempotent and does not delete data. Production runs require the explicit
+`--allow-production` flag; run it only after reviewing that the demo inventory
+is intended to be public in that environment.
+
 API is now at `http://localhost:8000/api/`, Django admin at `/admin/`
 (use it as the MVP admin panel — see "Admin" below).
+
+For production settings, Gunicorn/Nginx configuration, health checks, and a
+repeatable k6 load test, see `../deploy/DEPLOYMENT.md`. Do not use Django's
+development server in production.
 
 ## Switching to Postgres for production
 
@@ -51,22 +62,23 @@ still call `POST /api/offers/<id>/publish/`, `/turn_on/`, `/turn_off/` by hand.
 
 ## Auth — phone number + OTP (no password, no email required)
 
-JWT via SimpleJWT, but the sign-in method is a 6-digit code texted to the
-phone number, matching how people actually expect to log into a local
-marketplace app. There's no separate register/login split — verifying a
-brand-new phone number creates the account in the same call.
+JWT via SimpleJWT, with a 6-digit SMS code for sign-in. Existing numbers
+authenticate immediately after OTP verification. A new number receives a
+short-lived registration ticket after verification, then chooses a name and
+role once to complete signup.
 
 - `POST /api/auth/otp/request/` `{phone_number}` → `{status, expires_in}`
-  (plus `debug_otp` **only when `DEBUG=True`** — see "No SMS gateway wired
-  up yet" below). Rate-limited: 30s between requests for the same number,
+  (plus `debug_otp` **only when `DEBUG=True`** — see "SMS provider adapter"
+  below). Rate-limited: 30s between requests for the same number,
   max 5 requests/hour.
-- `POST /api/auth/otp/verify/` `{phone_number, otp, role?, username?, guest_id?}`
-  → `{user, tokens: {access, refresh}, created}`. `role` (`customer` or
-  `shopkeeper`, defaults to `customer`) and `username` are only used the
-  *first* time a number signs in — ignored for a returning user, so it's
-  safe for the frontend to always send them. A code expires after 5 minutes,
+- `POST /api/auth/otp/verify/` `{phone_number, otp, guest_id?}` returns either
+  `{user, tokens: {access, refresh}, created: false}` for an existing account,
+  or `{requires_profile_setup: true, registration_token}` for a new number.
+  A code expires after 5 minutes,
   allows 5 incorrect attempts before it's invalidated, and can only be used
   once.
+- `POST /api/auth/signup/complete/` `{registration_token, username, role, guest_id?}`
+  completes first-time signup and returns `{user, tokens, created: true}`.
 - `POST /api/auth/token/refresh/` `{refresh}` → `{access}`
 - `GET/PATCH /api/auth/me/` — current user + customer profile
 - `GET/PUT /api/auth/guest-session/<uuid>/` — non-sensitive guest prefs (section 39),
@@ -74,20 +86,19 @@ brand-new phone number creates the account in the same call.
 
 Send `Authorization: Bearer <access>` on authenticated requests.
 
-### No SMS gateway wired up yet
+### SMS provider adapter
 
-`accounts/otp.py`'s `send_sms(phone_number, message)` is the one function to
-replace with a real provider — MSG91, Twilio, or Exotel are the common
-choices for Indian phone numbers; it's deliberately a two-argument function
-so any of them drop in easily. Until you do:
-- Every OTP is logged via Python's `logging` (visible in the `runserver` console).
-- **When `DEBUG=True`**, `POST /api/auth/otp/request/` also returns the code
-  directly in the JSON response as `debug_otp`, so local development and
-  testing work with zero SMS account configured. This field is never present
-  when `DEBUG=False` — nothing to remember to strip out before going live,
-  it's structurally impossible for it to leak in production as long as
-  `DEBUG=False` there (which it must be regardless, for unrelated security
-  reasons — see Django's deployment checklist).
+Set `SMS_BACKEND` to a dotted Python path for a callable with the signature
+`send_sms(phone_number, message)`. The project does not pick an SMS vendor or
+ship credentials; implement and test the adapter for your chosen provider,
+then load its credentials from a secret manager. Production refuses to start
+without this setting and refuses the development console backend. Provider
+delivery failures remove the unsent OTP record, and production OTP values are
+never written to application logs.
+
+For local development, the default `accounts.otp.console_sms_backend` writes
+the SMS text to the console and exposes `debug_otp` only when `DEBUG=True`.
+Never enable this backend in production.
 
 ### Django admin / staff login
 
@@ -174,12 +185,10 @@ without touching the API.
 
 ## Scaling notes (read before you hit real traffic)
 
-- **Geo search** is plain haversine + a lat/lng bounding-box pre-filter
-  (`core/geo.py`), fine up to tens of thousands of active offers. When you
-  outgrow it, swap in GeoDjango + PostGIS (`PointField` + `annotate(distance=...)`)
-  — every call site here only needs `distance_km` on each object, so the swap
-  is contained to `core/geo.py` and the two `list()` overrides in
-  `businesses/views.py` / `offers/views.py`.
+- **Geo search** uses a SQL bounding-box pre-filter and exact spherical
+  distance annotation before database pagination (`core/geo.py`), rather than
+  loading and sorting the full result set in Python. For dense, multi-region
+  catalogs, measure PostgreSQL query plans and consider GeoDjango + PostGIS.
 - **Images** are stored via `MEDIA_ROOT` (local disk) by default — swap to
   S3/Cloud Storage via `django-storages` before you have real traffic across
   more than one app server.

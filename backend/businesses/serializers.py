@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from core.uploads import validate_image_upload, validate_verification_upload
+
 from .models import Business, BusinessPhoto, BusinessVerification
 
 
@@ -7,6 +9,9 @@ class BusinessPhotoSerializer(serializers.ModelSerializer):
     class Meta:
         model = BusinessPhoto
         fields = ["id", "image", "order"]
+
+    def validate_image(self, image):
+        return validate_image_upload(image)
 
 
 class BusinessListSerializer(serializers.ModelSerializer):
@@ -57,6 +62,9 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
             )
         return category
 
+    def validate_logo(self, logo):
+        return validate_image_upload(logo)
+
     def get_distance_km(self, obj):
         return getattr(obj, "distance_km", None)
 
@@ -71,7 +79,12 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
 
 
 class BusinessVerificationSerializer(serializers.ModelSerializer):
+    document = serializers.FileField(write_only=True)
+
     class Meta:
         model = BusinessVerification
         fields = ["id", "business", "document", "note", "status", "admin_note", "submitted_at", "decided_at"]
         read_only_fields = ["status", "admin_note", "decided_at"]
+
+    def validate_document(self, document):
+        return validate_verification_upload(document)

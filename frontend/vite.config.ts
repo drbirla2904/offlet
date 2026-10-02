@@ -44,10 +44,8 @@ export default defineConfig({
         ],
       },
       devOptions: {
-        // Lets you test install/offline behavior with `npm run dev`, not
-        // just after `npm run build` — service workers are normally
-        // dev-server-disabled by default.
-        enabled: true,
+        // Avoid stale app-shell caches masking Vite updates during development.
+        enabled: false,
       },
     }),
   ],

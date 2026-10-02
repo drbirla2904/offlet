@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 
-from core.permissions import IsBusinessOwner
+from core.permissions import HasCurrentShopkeeperLegalAcceptance, IsBusinessOwner
 
 from .models import Category, Product, ProductImage
 from .serializers import CategorySerializer, ProductImageSerializer, ProductSerializer
@@ -57,7 +57,7 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsBusinessOwner]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsBusinessOwner, HasCurrentShopkeeperLegalAcceptance]
 
     def get_queryset(self):
         qs = Product.objects.select_related("business", "category").prefetch_related("images")
@@ -69,7 +69,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 class ProductImageViewSet(viewsets.ModelViewSet):
     serializer_class = ProductImageSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, HasCurrentShopkeeperLegalAcceptance]
 
     def get_queryset(self):
         qs = ProductImage.objects.filter(product__business__owner=self.request.user)

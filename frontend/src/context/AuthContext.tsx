@@ -13,7 +13,11 @@ interface AuthContextValue {
   openLoginModal: (message?: string) => void
   closeLoginModal: () => void
   requestOtp: (phoneNumber: string) => Promise<{ expiresIn: number; debugOtp?: string }>
-  verifyOtp: (phoneNumber: string, otp: string, role?: 'customer' | 'shopkeeper', username?: string) => Promise<{ user: User; created: boolean }>
+  verifyOtp: (phoneNumber: string, otp: string) => Promise<
+    | { requiresProfileSetup: true; registrationToken: string }
+    | { requiresProfileSetup: false; user: User; created: boolean }
+  >
+  completeRegistration: (registrationToken: string, username: string, role: 'customer' | 'shopkeeper') => Promise<{ user: User; created: boolean }>
   logout: () => void
   refreshMe: () => Promise<void>
 }
@@ -59,41 +63,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(LOGIN_REQUIRED_EVENT, handler)
   }, [])
 
-  const requestOtp = async (phoneNumber: string) => {
+  const requestOtp = useCallback(async (phoneNumber: string) => {
     const res = await authApi.requestOtp(phoneNumber)
     return { expiresIn: res.expires_in, debugOtp: res.debug_otp }
-  }
+  }, [])
 
-  const verifyOtp = async (
+  const verifyOtp = useCallback(async (
     phoneNumber: string,
-    otp: string,
-    role?: 'customer' | 'shopkeeper',
-    username?: string
+    otp: string
   ) => {
-    const res = await authApi.verifyOtp({ phone_number: phoneNumber, otp, role, username, guest_id: guestId })
+    const res = await authApi.verifyOtp({ phone_number: phoneNumber, otp, guest_id: guestId })
+    if ('requires_profile_setup' in res) {
+      return { requiresProfileSetup: true as const, registrationToken: res.registration_token }
+    }
+    tokenStore.set(res.tokens.access, res.tokens.refresh)
+    setUser(res.user)
+    setLoginModalOpen(false)
+    return { requiresProfileSetup: false as const, user: res.user, created: res.created }
+  }, [guestId])
+
+  const completeRegistration = useCallback(async (
+    registrationToken: string,
+    username: string,
+    role: 'customer' | 'shopkeeper'
+  ) => {
+    const res = await authApi.completeRegistration({
+      registration_token: registrationToken,
+      username,
+      role,
+      guest_id: guestId,
+    })
     tokenStore.set(res.tokens.access, res.tokens.refresh)
     setUser(res.user)
     setLoginModalOpen(false)
     return { user: res.user, created: res.created }
-  }
+  }, [guestId])
 
-  const logout = () => {
+  const logout = useCallback(() => {
     tokenStore.clear()
     setUser(null)
-  }
+  }, [])
 
-  const openLoginModal = (message?: string) => {
+  const openLoginModal = useCallback((message?: string) => {
     setLoginModalMessage(message || DEFAULT_LOGIN_MESSAGE)
     setLoginModalOpen(true)
-  }
-  const closeLoginModal = () => setLoginModalOpen(false)
+  }, [])
+  const closeLoginModal = useCallback(() => setLoginModalOpen(false), [])
 
   const value = useMemo(
     () => ({
       user, loading, isAuthenticated: !!user, loginModalOpen, loginModalMessage,
-      openLoginModal, closeLoginModal, requestOtp, verifyOtp, logout, refreshMe,
+      openLoginModal, closeLoginModal, requestOtp, verifyOtp, completeRegistration, logout, refreshMe,
     }),
-    [user, loading, loginModalOpen, loginModalMessage]
+    [
+      user, loading, loginModalOpen, loginModalMessage, openLoginModal,
+      closeLoginModal, requestOtp, verifyOtp, completeRegistration, logout, refreshMe,
+    ]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

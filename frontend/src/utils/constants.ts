@@ -24,4 +24,5 @@ export const OFFER_TYPES = [
 export const OFFER_TAGS = [
   'hot_deal', 'flash_sale', 'limited_stock', 'clearance', 'best_seller',
   'new', 'popular', 'todays_deal', 'price_drop', 'last_pieces', 'exclusive',
+  'demo', 'verified_shop',
 ]

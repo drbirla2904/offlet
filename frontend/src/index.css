@@ -61,6 +61,91 @@ body {
   outline-offset: 2px;
 }
 
+.file-picker {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-surface);
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.file-picker:hover {
+  border-color: var(--color-teal);
+  background: #F8FBFA;
+}
+
+.file-picker:focus-within {
+  outline: 2px solid var(--color-teal);
+  outline-offset: 2px;
+}
+
+.file-picker-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.file-picker-button {
+  flex: none;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-canvas);
+  padding: 0.45rem 0.75rem;
+  color: var(--color-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.file-picker-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-ink-soft);
+  font-size: 0.8125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-picker-tile {
+  position: relative;
+  display: flex;
+  width: 5rem;
+  height: 5rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--color-border);
+  border-radius: 0.75rem;
+  color: var(--color-ink-soft);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.file-picker-tile:hover {
+  border-color: var(--color-teal);
+  background: var(--color-teal-soft);
+}
+
+.file-picker-tile:focus-within {
+  outline: 2px solid var(--color-teal);
+  outline-offset: 2px;
+}
+
+.file-picker-tile:has(input:disabled) {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 button:disabled {
   cursor: not-allowed;
 }
@@ -82,6 +167,203 @@ main > div {
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.poster-stage {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 1.25rem;
+  background-color: #E9EFED;
+  background-image: radial-gradient(#CBD7D4 0.7px, transparent 0.7px);
+  background-size: 12px 12px;
+}
+.shop-poster {
+  display: flex;
+  width: min(100%, 35rem);
+  aspect-ratio: 210 / 297;
+  flex-direction: column;
+  overflow: hidden;
+  background: #FFFDF8;
+  color: #173B36;
+  box-shadow: 0 18px 45px rgb(23 59 54 / 18%);
+  font-family: var(--font-sans);
+}
+.shop-poster-top {
+  position: relative;
+  min-height: 37%;
+  padding: 8% 9% 6%;
+  background: #163D38;
+  color: #FFFDF8;
+}
+.shop-poster-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 800;
+}
+.shop-poster-mark {
+  display: inline-flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.45rem;
+  background: #E96D52;
+  color: white;
+  font-family: var(--font-display);
+  font-size: 1rem;
+}
+.shop-poster-eyebrow,
+.shop-poster-label,
+.shop-poster-scan-index {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.shop-poster-eyebrow { margin-top: 11%; color: #A8CBC1; }
+.shop-poster-heading {
+  margin-top: 0.65rem;
+  font-family: var(--font-display);
+  font-size: 3.15rem;
+  font-weight: 600;
+  line-height: 0.98;
+}
+.shop-poster-heading span { color: #EFA58A; }
+.shop-poster-rule {
+  position: absolute;
+  right: 9%;
+  bottom: 0;
+  width: 31%;
+  height: 0.45rem;
+  background: #E96D52;
+}
+.shop-poster-shop { padding: 6% 9% 4%; }
+.shop-poster-label { color: #BB563F; }
+.shop-poster-shop h2 {
+  margin-top: 0.45rem;
+  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-weight: 600;
+  line-height: 1.05;
+}
+.shop-poster-category {
+  display: inline-block;
+  margin-top: 0.6rem;
+  border: 1px solid #CCDAD5;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  color: #28675D;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.shop-poster-location {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+  color: #536A64;
+  font-size: 0.72rem;
+}
+.shop-poster-scan {
+  display: flex;
+  min-height: 27%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1% 6% 5%;
+  border-radius: 1rem;
+  padding: 5%;
+  background: #F0F4F0;
+}
+.shop-poster-scan-copy { min-width: 0; }
+.shop-poster-scan-index { color: #BB563F; }
+.shop-poster-scan-copy h3 {
+  margin-top: 0.5rem;
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 600;
+  line-height: 1.08;
+}
+.shop-poster-scan-copy > p {
+  max-width: 15rem;
+  margin-top: 0.5rem;
+  color: #536A64;
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+.shop-poster-contact {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+  color: #28675D;
+  font-size: 0.72rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.shop-poster-qr-wrap {
+  display: flex;
+  flex: none;
+  width: 39%;
+  max-width: 10rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #DCE5E0;
+  border-radius: 0.75rem;
+  padding: 0.45rem;
+  background: white;
+}
+.shop-poster-qr-wrap svg { display: block; width: 100%; height: auto; }
+.shop-poster-qr-wrap span { color: #536A64; font-size: 0.55rem; font-weight: 800; letter-spacing: 0.06em; }
+.shop-poster-footer {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: auto 9% 7%;
+  border-top: 1px solid #DCE5E0;
+  padding-top: 0.75rem;
+}
+.shop-poster-footer div { display: flex; flex-direction: column; gap: 0.15rem; }
+.shop-poster-footer strong { font-size: 0.9rem; font-weight: 800; }
+.shop-poster-footer span,
+.shop-poster-footer a { color: #61766F; font-size: 0.6rem; }
+.shop-poster-footer a { max-width: 55%; overflow-wrap: anywhere; text-align: right; }
+
+@media (max-width: 520px) {
+  .poster-stage { margin-inline: -0.5rem; padding: 0.5rem; border-radius: 0.75rem; }
+  .shop-poster { width: 100%; }
+  .shop-poster-heading { font-size: 2rem; }
+  .shop-poster-shop h2 { font-size: 1.55rem; }
+  .shop-poster-scan-copy h3 { font-size: 1.2rem; }
+  .shop-poster-scan { gap: 0.5rem; }
+  .shop-poster-scan-copy > p { font-size: 0.58rem; }
+  .shop-poster-contact { font-size: 0.6rem; }
+  .shop-poster-qr-wrap { width: 37%; padding: 0.3rem; }
+}
+
+@media print {
+  @page { size: A4 portrait; margin: 0; }
+  html, body, #root { width: 210mm; min-width: 210mm; margin: 0 !important; background: white !important; }
+  body * { visibility: hidden !important; }
+  #print-poster, #print-poster * { visibility: visible !important; }
+  #print-poster {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 210mm;
+    height: 297mm;
+    aspect-ratio: auto;
+    box-shadow: none;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .poster-tools, .poster-stage { border: 0; padding: 0; background: transparent; }
+  .poster-tools { display: none !important; }
+}
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(-8px); }
