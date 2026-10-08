@@ -49,7 +49,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
         conversation = self.get_object()
         if request.user.id not in (conversation.customer_id, conversation.business.owner_id):
             raise PermissionDenied("Not part of this conversation.")
-        if conversation.is_blocked:
+        if conversation.is_blocked and request.method == "POST":
             return Response({"detail": "This conversation is blocked."}, status=status.HTTP_403_FORBIDDEN)
 
         if request.method == "GET":

@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from businesses.models import Business
-from .models import Conversation
+from .models import Conversation, Message
 
 User = get_user_model()
 
@@ -74,3 +74,24 @@ class ConversationParticipantTests(APITestCase):
 		response = self.client.get(f"/api/conversations/{self.conversation.id}/")
 
 		self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+	def test_blocked_conversation_keeps_history_readable_but_rejects_replies(self):
+		message = Message.objects.create(
+			conversation=self.conversation,
+			sender=self.customer,
+			text="Is this item available?",
+		)
+		self.conversation.is_blocked = True
+		self.conversation.save(update_fields=["is_blocked"])
+		self.client.force_authenticate(self.shopkeeper)
+
+		history_response = self.client.get(f"/api/conversations/{self.conversation.id}/messages/")
+		reply_response = self.client.post(
+			f"/api/conversations/{self.conversation.id}/messages/",
+			{"text": "Yes"},
+		)
+
+		self.assertEqual(history_response.status_code, status.HTTP_200_OK)
+		self.assertEqual(history_response.data[0]["id"], message.id)
+		self.assertTrue(history_response.data[0]["is_read"])
+		self.assertEqual(reply_response.status_code, status.HTTP_403_FORBIDDEN)

@@ -121,11 +121,13 @@ export const reportsApi = {
 
 export const conversationsApi = {
   list: () => apiClient.get('/conversations/').then((r) => r.data),
+  retrieve: (conversationId: number) => apiClient.get(`/conversations/${conversationId}/`).then((r) => r.data),
   create: (payload: { business: number; offer?: number; product?: number }) =>
     apiClient.post<{ id: number }>('/conversations/', payload).then((r) => r.data),
   messages: (conversationId: number) => apiClient.get(`/conversations/${conversationId}/messages/`).then((r) => r.data),
   sendMessage: (conversationId: number, text: string) =>
     apiClient.post(`/conversations/${conversationId}/messages/`, { text }).then((r) => r.data),
+  block: (conversationId: number) => apiClient.post(`/conversations/${conversationId}/block/`).then((r) => r.data),
 }
 
 export const notificationsApi = {
