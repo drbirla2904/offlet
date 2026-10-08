@@ -8,8 +8,17 @@ import { useGuest } from '../context/GuestContext'
 import { useToast } from '../context/ToastContext'
 import { useState } from 'react'
 import { resolveMediaUrl } from '../utils/mediaUrl'
+import { HorizontalRail } from './HorizontalRail'
 
-export function OfferCard({ offer, onFavoriteChange }: { offer: Offer; onFavoriteChange?: () => void }) {
+export function OfferCard({
+  offer,
+  onFavoriteChange,
+  className,
+}: {
+  offer: Offer
+  onFavoriteChange?: () => void
+  className?: string
+}) {
   const requireAuth = useRequireAuth()
   const { guestId } = useGuest()
   const { showToast } = useToast()
@@ -55,9 +64,9 @@ export function OfferCard({ offer, onFavoriteChange }: { offer: Offer; onFavorit
   return (
     <Link
       to={`/offers/${offer.id}`}
-      className="block w-44 sm:w-56 shrink-0 bg-surface rounded-2xl border border-border overflow-hidden hover:shadow-md transition-shadow"
+      className={`block w-[72vw] max-w-64 shrink-0 snap-start overflow-hidden rounded-2xl border border-border bg-surface transition-shadow hover:shadow-md sm:w-56 ${className || ''}`}
     >
-      <div className="relative h-32 sm:h-36 bg-canvas">
+      <div className="relative h-36 bg-canvas sm:h-40">
         {offer.product_image ? (
           <img src={resolveMediaUrl(offer.product_image)} alt={offer.product_name} className="w-full h-full object-contain" />
         ) : (
@@ -119,19 +128,21 @@ export function OfferCard({ offer, onFavoriteChange }: { offer: Offer; onFavorit
   )
 }
 
-export function OfferRail({ title, offers, viewAllHref }: { title: string; offers: Offer[]; viewAllHref?: string }) {
+export function OfferRail({
+  title,
+  offers,
+  subtitle,
+  viewAllHref,
+}: {
+  title: string
+  offers: Offer[]
+  subtitle?: string
+  viewAllHref?: string
+}) {
   if (!offers.length) return null
   return (
-    <section className="mt-6">
-      <div className="flex items-center justify-between px-4 mb-2">
-        <h2 className="font-display text-lg font-semibold text-ink">{title}</h2>
-        {viewAllHref && <Link to={viewAllHref} className="text-xs font-semibold text-teal hover:underline">View all</Link>}
-      </div>
-      <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-1">
-        {offers.map((o) => (
-          <OfferCard key={o.id} offer={o} />
-        ))}
-      </div>
-    </section>
+    <HorizontalRail title={title} subtitle={subtitle} viewAllHref={viewAllHref} ariaLabel={title}>
+      {offers.map((offer) => <OfferCard key={offer.id} offer={offer} />)}
+    </HorizontalRail>
   )
 }

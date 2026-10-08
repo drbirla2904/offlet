@@ -5,7 +5,7 @@ export function CategoryChip({ category }: { category: Category }) {
   return (
     <Link
       to={`/search?category=${category.id}`}
-      className="shrink-0 flex flex-col items-center gap-1.5 w-16"
+      className="flex w-16 shrink-0 snap-start flex-col items-center gap-1.5 rounded-xl py-1"
     >
       <div className="w-14 h-14 rounded-2xl bg-marigold-soft flex items-center justify-center text-2xl">
         {category.icon || '🛍️'}

@@ -213,8 +213,8 @@ export function SearchPage() {
           <p className="mt-3 text-xs text-ink-soft" aria-live="polite">
             {totalCount.toLocaleString()} {totalCount === 1 ? 'result' : 'results'}
           </p>
-          <div className="mt-3 flex flex-wrap gap-3">
-            {offers.map((o) => <OfferCard key={o.id} offer={o} />)}
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {offers.map((o) => <OfferCard key={o.id} offer={o} className="w-full max-w-none" />)}
             {!offers.length && !error && <p className="w-full py-10 text-center text-sm text-ink-soft">No offers match these filters yet.</p>}
           </div>
           {error && <p role="alert" className="mt-4 text-center text-sm text-red-600">{error}</p>}

@@ -7,6 +7,8 @@ import { BusinessRail } from '../components/BusinessCard'
 import { CategoryChip } from '../components/CategoryChip'
 import { FeaturedCarousel } from '../components/FeaturedCarousel'
 import { OfferRailSkeleton } from '../components/Skeletons'
+import { useToast } from '../context/ToastContext'
+import { apiErrorMessage } from '../utils/apiError'
 
 export function Home() {
   const { latitude, longitude, city } = useLocationContext()
@@ -20,17 +22,20 @@ export function Home() {
   const [newOffers, setNewOffers] = useState<Offer[]>([])
   const [popularShops, setPopularShops] = useState<Business[]>([])
   const [loading, setLoading] = useState(true)
+  const { showToast } = useToast()
 
   useEffect(() => {
-    categoriesApi.list().then(setCategories).catch(() => {})
-  }, [])
+    categoriesApi.list().then(setCategories).catch((err) => {
+      showToast(apiErrorMessage(err, 'Categories could not be loaded.'), 'error')
+    })
+  }, [showToast])
 
   useEffect(() => {
     const geo = latitude != null && longitude != null
       ? { lat: latitude, lng: longitude, radius_km: 15 }
       : city ? { city } : {}
     setLoading(true)
-    Promise.all([
+    Promise.allSettled([
       offersApi.list({ ...geo, promoted: true, ordering: '-created_at' }),
       offersApi.list({ ...geo, ordering: 'distance' }),
       offersApi.list({ ...geo, offer_type: 'flash_sale' }),
@@ -41,17 +46,25 @@ export function Home() {
       businessesApi.list({ ...geo, city: latitude ? undefined : city }),
     ])
       .then(([ft, n, f, c, u, b, nw, shops]) => {
-        setFeatured(ft.results)
-        setNearby(n.results)
-        setFlash(f.results)
-        setClearance(c.results)
-        setUnder499(u.results)
-        setBigDiscount(b.results)
-        setNewOffers(nw.results)
-        setPopularShops(shops.results)
+        if (ft.status === 'fulfilled') setFeatured(ft.value.results)
+        else showToast(apiErrorMessage(ft.reason, 'Featured offers could not be loaded.'), 'error')
+        if (n.status === 'fulfilled') setNearby(n.value.results)
+        else showToast(apiErrorMessage(n.reason, 'Nearby offers could not be loaded.'), 'error')
+        if (f.status === 'fulfilled') setFlash(f.value.results)
+        else showToast(apiErrorMessage(f.reason, 'Flash deals could not be loaded.'), 'error')
+        if (c.status === 'fulfilled') setClearance(c.value.results)
+        else showToast(apiErrorMessage(c.reason, 'Clearance offers could not be loaded.'), 'error')
+        if (u.status === 'fulfilled') setUnder499(u.value.results)
+        else showToast(apiErrorMessage(u.reason, 'Budget offers could not be loaded.'), 'error')
+        if (b.status === 'fulfilled') setBigDiscount(b.value.results)
+        else showToast(apiErrorMessage(b.reason, 'Discounted offers could not be loaded.'), 'error')
+        if (nw.status === 'fulfilled') setNewOffers(nw.value.results)
+        else showToast(apiErrorMessage(nw.reason, 'Recently added offers could not be loaded.'), 'error')
+        if (shops.status === 'fulfilled') setPopularShops(shops.value.results)
+        else showToast(apiErrorMessage(shops.reason, 'Nearby shops could not be loaded.'), 'error')
       })
       .finally(() => setLoading(false))
-  }, [latitude, longitude, city])
+  }, [latitude, longitude, city, showToast])
 
   const nothingToShow = !loading && !featured.length && !nearby.length && !flash.length && !clearance.length
 
@@ -59,7 +72,7 @@ export function Home() {
     <div className="pb-20 sm:pb-8">
       {!loading && <FeaturedCarousel offers={featured} />}
 
-      <div className="px-4 pt-4 overflow-x-auto no-scrollbar flex gap-3">
+      <div aria-label="Browse categories" className="flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain px-4 pt-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {categories.map((c) => (
           <CategoryChip key={c.id} category={c} />
         ))}
@@ -73,12 +86,21 @@ export function Home() {
         </>
       ) : (
         <>
-          <OfferRail title="Offers Near You" offers={nearby} viewAllHref="/search?ordering=distance&radius_km=15" />
-          <OfferRail title="Flash Deals" offers={flash} />
+          <OfferRail
+            title="Offers Near You"
+            subtitle={latitude != null && longitude != null ? 'Fresh finds around your current location' : `Local picks in ${city}`}
+            offers={nearby}
+            viewAllHref="/search?ordering=distance&radius_km=15"
+          />
+          <BusinessRail
+            title="Shops Near You"
+            subtitle={latitude != null && longitude != null ? 'Explore local stores around you' : `Discover stores in ${city}`}
+            businesses={popularShops}
+          />
+          <OfferRail title="Flash Deals" subtitle="Limited-time prices from neighborhood shops" offers={flash} />
           <OfferRail title="Clearance Sale" offers={clearance} />
           <OfferRail title="Under ₹499" offers={under499} />
           <OfferRail title="50%+ OFF" offers={bigDiscount} />
-          <BusinessRail title="Popular Shops" businesses={popularShops} />
           <OfferRail title="Recently Added" offers={newOffers} />
         </>
       )}

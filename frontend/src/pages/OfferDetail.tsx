@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { conversationsApi, favoritesApi, offersApi, reportsApi } from '../api/endpoints'
-import type { Offer } from '../types'
+import { businessesApi, conversationsApi, favoritesApi, offersApi, reportsApi } from '../api/endpoints'
+import type { Business, Offer } from '../types'
 import { formatDistance, formatINR, TAG_LABELS } from '../utils/format'
 import { CountdownTimer } from '../components/CountdownTimer'
 import { useGuest } from '../context/GuestContext'
@@ -11,30 +11,80 @@ import { useToast } from '../context/ToastContext'
 import { apiErrorMessage } from '../utils/apiError'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 import { getDirectionsUrl } from '../utils/directions'
+import { useLocationContext } from '../context/LocationContext'
+import { OfferRail } from '../components/OfferCard'
+import { BusinessRail } from '../components/BusinessCard'
 
 export function OfferDetail() {
   const { id } = useParams()
   const offerId = Number(id)
   const [offer, setOffer] = useState<Offer | null>(null)
+  const [relatedContent, setRelatedContent] = useState<{ offerId: number; offers: Offer[]; shops: Business[] } | null>(null)
   const [showReport, setShowReport] = useState(false)
   const { guestId, addRecentlyViewed } = useGuest()
   const requireAuth = useRequireAuth()
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { latitude, longitude, city } = useLocationContext()
 
   useEffect(() => {
-    offersApi.retrieve(offerId).then((o) => {
-      setOffer(o)
+    let active = true
+    offersApi.retrieve(offerId).then((currentOffer) => {
+      if (!active) return
+      setOffer(currentOffer)
       addRecentlyViewed(offerId)
+    }).catch((err) => {
+      if (active) showToast(apiErrorMessage(err, 'Offer details could not be loaded.'), 'error')
     })
     offersApi.logView(offerId, guestId).catch(() => {})
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offerId])
+    return () => { active = false }
+  }, [offerId, guestId, addRecentlyViewed, showToast])
 
-  if (!offer) return <p className="text-center text-ink-soft py-10 text-sm">Loading…</p>
+  useEffect(() => {
+    if (!offer) return
+    let active = true
+    const geo = {
+      lat: latitude ?? undefined,
+      lng: longitude ?? undefined,
+      radius_km: latitude != null && longitude != null ? 30 : undefined,
+      city: latitude != null && longitude != null ? undefined : city || undefined,
+    }
+    Promise.allSettled([
+      offersApi.list({
+        ...geo,
+        search: offer.product?.name || offer.product_name,
+        ordering: latitude != null && longitude != null ? 'distance' : '-popular',
+      }),
+      businessesApi.list({
+        ...geo,
+        category: offer.business.category ?? undefined,
+        page: 1,
+      }),
+    ]).then(([matchingOffers, shops]) => {
+      if (!active) return
+      let relatedOffers: Offer[] = []
+      let relatedShops: Business[] = []
+      if (matchingOffers.status === 'fulfilled') {
+        relatedOffers = matchingOffers.value.results.filter((item) => item.id !== offer.id).slice(0, 10)
+      } else {
+        showToast(apiErrorMessage(matchingOffers.reason, 'Related offers could not be loaded.'), 'error')
+      }
+      if (shops.status === 'fulfilled') {
+        relatedShops = shops.value.results.filter((shop) => shop.id !== offer.business.id).slice(0, 10)
+      } else {
+        showToast(apiErrorMessage(shops.reason, 'Nearby shops could not be loaded.'), 'error')
+      }
+      setRelatedContent({ offerId: offer.id, offers: relatedOffers, shops: relatedShops })
+    })
+    return () => { active = false }
+  }, [offer, latitude, longitude, city, showToast])
+
+  if (!offer || offer.id !== offerId) return <p className="text-center text-ink-soft py-10 text-sm">Loading…</p>
 
   const business = offer.business
   const images = offer.product?.images?.length ? offer.product.images : []
+  const relatedOffers = relatedContent?.offerId === offer.id ? relatedContent.offers : []
+  const relatedShops = relatedContent?.offerId === offer.id ? relatedContent.shops : []
 
   const call = () => {
     offersApi.interact(offer.id, 'call', guestId).catch(() => {})
@@ -152,6 +202,17 @@ export function OfferDetail() {
           </a>
         </div>
       </div>
+
+      <OfferRail
+        title="More like this"
+        subtitle="Related products and offers from nearby shops"
+        offers={relatedOffers}
+      />
+      <BusinessRail
+        title="More shops nearby"
+        subtitle="Explore local shops in this category"
+        businesses={relatedShops}
+      />
 
       {showReport && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">

@@ -2,14 +2,15 @@ import { Link } from 'react-router-dom'
 import type { Business } from '../types'
 import { formatDistance } from '../utils/format'
 import { resolveMediaUrl } from '../utils/mediaUrl'
+import { HorizontalRail } from './HorizontalRail'
 
 export function BusinessCard({ business }: { business: Business }) {
   return (
     <Link
       to={`/shops/${business.id}`}
-      className="w-40 sm:w-48 shrink-0 bg-surface rounded-2xl border border-border p-3 flex flex-col items-center text-center hover:shadow-md transition-shadow"
+      className="flex w-[68vw] max-w-60 shrink-0 snap-start flex-col items-center rounded-2xl border border-border bg-surface p-4 text-center transition-shadow hover:shadow-md sm:w-48"
     >
-      <div className="w-16 h-16 rounded-full bg-canvas overflow-hidden flex items-center justify-center text-2xl mb-2">
+      <div className="mb-2 flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-canvas text-2xl">
         {business.logo ? <img src={resolveMediaUrl(business.logo)} alt={business.name} className="w-full h-full object-contain p-1" /> : '🏪'}
       </div>
       <p className="text-sm font-semibold text-ink line-clamp-1">
@@ -20,20 +21,26 @@ export function BusinessCard({ business }: { business: Business }) {
         {business.rating_count > 0 ? `★ ${business.rating_average.toFixed(1)} (${business.rating_count})` : 'New shop'}
       </p>
       {business.distance_km != null && <p className="text-xs text-ink-soft">{formatDistance(business.distance_km)} away</p>}
+      {(business.area || business.city) && <p className="mt-1 max-w-full truncate text-[11px] text-ink-soft">{[business.area, business.city].filter(Boolean).join(', ')}</p>}
     </Link>
   )
 }
 
-export function BusinessRail({ title, businesses }: { title: string; businesses: Business[] }) {
+export function BusinessRail({
+  title,
+  businesses,
+  subtitle,
+  viewAllHref,
+}: {
+  title: string
+  businesses: Business[]
+  subtitle?: string
+  viewAllHref?: string
+}) {
   if (!businesses.length) return null
   return (
-    <section className="mt-6">
-      <h2 className="font-display text-lg font-semibold text-ink px-4 mb-2">{title}</h2>
-      <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-1">
-        {businesses.map((b) => (
-          <BusinessCard key={b.id} business={b} />
-        ))}
-      </div>
-    </section>
+    <HorizontalRail title={title} subtitle={subtitle} viewAllHref={viewAllHref} ariaLabel={title}>
+      {businesses.map((business) => <BusinessCard key={business.id} business={business} />)}
+    </HorizontalRail>
   )
 }
